@@ -5,14 +5,17 @@ import os
 from datetime import datetime
 
 import torch
+from torch.utils.data import DataLoader
+from torchvision import transforms
 
 from eth_mugs_dataset import ETHMugsDataset
-from utils import IMAGE_SIZE, compute_iou
+from utils import IMAGE_SIZE, compute_iou, save_predictions
+from model import FCN  
 
 
-def build_model():  # TODO: Add your model definition here
+def build_model():  
     """Build the model."""
-
+    return FCN(in_channels=3, out_channels=1)
 
 def train(
     ckpt_dir: str,
@@ -25,43 +28,51 @@ def train(
     val_batch_size = 1
     val_frequency = 1
 
-    # TODO: Set your own values for the hyperparameters
-    num_epochs = 50
-    # lr = 1e-4
-    # train_batch_size = 8
+    # Hyperparameters
+    num_epochs = 1
+    lr = 1e-4
+    train_batch_size = 8
     # val_batch_size = 1
     # ...
 
     print(f"[INFO]: Number of training epochs: {num_epochs}")
+    print(f"[INFO]: Learning rate: {lr}")
+    print(f"[INFO]: Training batch size: {train_batch_size}")
     # print(f"[INFO]: Image scale: {image_scale}")
-    # print(f"[INFO]: Learning rate: {lr}")
-    # print(f"[INFO]: Training batch size: {train_batch_size}")
+
 
     # Choose Device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    # TODO: Define your Dataset and DataLoader
+    # Define Dataset and DataLoader
     # ETHMugsDataset 
     # Data loaders
-    # train_dataset = ...
-    # train_dataloader = ...
-    # val_dataset = ...
-    # val_dataloader = ...
 
-    # TODO: Define you own model
-    # model = build_model(...)
-    # model.to(device)
+    transform = transforms.Compose([
+        transforms.Resize(IMAGE_SIZE),
+        transforms.ToTensor(),
+    ])
 
-    # TODO: Define Loss function
-    # criterion = ...
+    train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
+    train_dataloader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
 
-    # TODO: Define Optimizer
-    # optimizer = ...
+    val_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val", transform=transform)
+    val_dataloader = DataLoader(val_dataset, batch_size=val_batch_size, shuffle=False)
 
-    # TODO: Define Learning rate scheduler if needed
-    # lr_scheduler = ...
+    # Define model
+    model = build_model()
+    model.to(device)
 
-    # TODO: Write the training loop!
+    # Define Loss function
+    criterion = torch.nn.BCELoss()  # or any other loss function suitable for your task
+
+    # Define Optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Define Learning rate scheduler if needed
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+
+    # Training loop!
     print("[INFO]: Starting training...")
     for epoch in range(num_epochs):
         model.train()
@@ -72,15 +83,17 @@ def train(
 
             optimizer.zero_grad()
 
-            # Forward pass
-            # output = model(image ...)
+             # Forward pass
+            output = model(image)
 
-            # loss = criterion(output ...)
+            # Compute loss
+            loss = criterion(output, gt_mask.float())
 
             # Backward pass
             loss.backward()
             optimizer.step()
-            # lr_scheduler.step()
+
+            lr_scheduler.step()
 
         # Save model
         torch.save(model.state_dict(), os.path.join(ckpt_dir, "last_epoch.pth"))
@@ -95,9 +108,11 @@ def train(
                     val_gt_mask = val_gt_mask.to(device)
 
                     # Forward pass
-                    # output = model(image ...)
+                    output = model(val_image)
 
-                    # val_iou += compute_iou(...)
+                    # Compute IoU
+                    predicted_mask = (output > 0).float()
+                    val_iou += compute_iou(predicted_mask, val_gt_mask)
 
                 val_iou /= len(val_dataloader)
 
@@ -127,12 +142,12 @@ if __name__ == "__main__":
     ckpt_dir = os.path.join(args.ckpt_dir, dt_string)
     os.makedirs(ckpt_dir, exist_ok=True)
     print("[INFO]: Model checkpoints will be saved to:", ckpt_dir)
-
+    print("PLEASE ARCHIVE PREDICTIONS AND RENAME THE FILE TO predictions{number}.csv")
     # Set data root
-    train_data_root = os.path.join(args.data_root, "my_training_data")
+    train_data_root = os.path.join(args.data_root, "training_data")
     print(f"[INFO]: Train data root: {train_data_root}")
 
-    val_data_root = os.path.join(args.data_root, "my_validation_data")
+    val_data_root = os.path.join(args.data_root, "validation_data")
     print(f"[INFO]: Validation data root: {val_data_root}")
 
     train(ckpt_dir, train_data_root, val_data_root)
