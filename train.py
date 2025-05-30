@@ -56,7 +56,7 @@ def train(
     train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
     train_dataloader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
 
-    val_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val", transform=transform)
+    val_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val")
     val_dataloader = DataLoader(val_dataset, batch_size=val_batch_size, shuffle=False)
 
     # Define model
@@ -94,6 +94,10 @@ def train(
             optimizer.step()
 
             lr_scheduler.step()
+
+            # Trace output:
+            print("         Training Loss: {}".format(loss.data.cpu().numpy()),
+                  "- IoU: {}".format(compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())))
 
         # Save model
         torch.save(model.state_dict(), os.path.join(ckpt_dir, "last_epoch.pth"))
@@ -144,10 +148,10 @@ if __name__ == "__main__":
     print("[INFO]: Model checkpoints will be saved to:", ckpt_dir)
     print("PLEASE ARCHIVE PREDICTIONS AND RENAME THE FILE TO predictions{number}.csv")
     # Set data root
-    train_data_root = os.path.join(args.data_root, "training_data")
+    train_data_root = os.path.join(args.data_root, "train_data")
     print(f"[INFO]: Train data root: {train_data_root}")
 
-    val_data_root = os.path.join(args.data_root, "validation_data")
-    print(f"[INFO]: Validation data root: {val_data_root}")
+    val_data_root = os.path.join(args.data_root, "test_data")
+    print(f"[INFO]: Test data root: {val_data_root}")
 
     train(ckpt_dir, train_data_root, val_data_root)

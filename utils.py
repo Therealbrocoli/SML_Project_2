@@ -36,7 +36,7 @@ def mask_to_rle(mask):
     return ' '.join(str(x) for x in runs)
 
 
-def compute_iou(pred_mask, gt_mask, eps=1e-6):
+def compute_iou(pred_mask, gt_mask, eps=1e-6, threshold=0.5):
     """Computes the IoU between two numpy arrays: pred_mask and gt_mask.
 
     Inputs:
@@ -47,13 +47,19 @@ def compute_iou(pred_mask, gt_mask, eps=1e-6):
     Outputs:
         iou_score (float)
     """
-    intersection = (
-        (pred_mask & gt_mask).astype(float).sum()
-    )  # will be zero if gt=0 or pred=0
-    union = (pred_mask | gt_mask).astype(float).sum()  # will be zero if both are 0
-    iou = (intersection + eps) / (
-        union + eps
-    )  # we smooth our division by epsilon to avoid 0/0
+    # Convert the predicted mask to binary using the threshold
+    pred_mask = (pred_mask > threshold).float()
+
+    # Convert tensors to integer type for bitwise operations
+    pred_mask = pred_mask.int()
+    gt_mask = gt_mask.int()
+
+    # Compute intersection and union
+    intersection = ((pred_mask & gt_mask).float().sum())  # will be zero if gt=0 or pred=0
+    union = (pred_mask | gt_mask).float().sum()  # will be zero if both are 0
+    
+    # Compute IoU
+    iou = (intersection + eps) / (union + eps)  # we smooth our division by epsilon to avoid 0/0
     iou_score = iou.mean()
     return iou_score
 

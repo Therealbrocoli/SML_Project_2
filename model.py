@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 
+
 class FCN(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(FCN, self).__init__()
@@ -26,6 +27,7 @@ class FCN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
             nn.Conv2d(32, out_channels, kernel_size=1),
+            nn.Sigmoid()  # Use Sigmoid for binary segmentation and add to final layer
         )
 
     def forward(self, x):
