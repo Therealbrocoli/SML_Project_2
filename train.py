@@ -1,4 +1,4 @@
-"""Code template for training a model on the ETHMugs dataset."""
+"""Code for training a model on the ETHMugs dataset."""
 
 import argparse
 import os
@@ -7,6 +7,8 @@ from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
+
+from PIL import Image
 
 from eth_mugs_dataset import ETHMugsDataset
 from utils import IMAGE_SIZE, compute_iou, save_predictions
@@ -38,16 +40,12 @@ def train(
     print(f"[INFO]: Number of training epochs: {num_epochs}")
     print(f"[INFO]: Learning rate: {lr}")
     print(f"[INFO]: Training batch size: {train_batch_size}")
-    # print(f"[INFO]: Image scale: {image_scale}")
 
 
     # Choose Device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # Define Dataset and DataLoader
-    # ETHMugsDataset 
-    # Data loaders
-
     transform = transforms.Compose([
         transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor(),
@@ -56,8 +54,12 @@ def train(
     train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
     train_dataloader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
 
-    val_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val")
-    val_dataloader = DataLoader(val_dataset, batch_size=val_batch_size, shuffle=False)
+    test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val")
+    test_dataloader = DataLoader(test_dataset, batch_size=val_batch_size, shuffle=False)
+
+    out_dir = os.path.join('prediction')
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
 
     # Define model
     model = build_model()
@@ -72,10 +74,13 @@ def train(
     # Define Learning rate scheduler if needed
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-    # Training loop!
+    # Training loop
     print("[INFO]: Starting training...")
     for epoch in range(num_epochs):
         model.train()
+        print('****************************')
+        print(epoch)
+        print('****************************')
 
         for image, gt_mask in train_dataloader:
             image = image.to(device)
@@ -104,26 +109,30 @@ def train(
 
         if epoch % val_frequency == 0:
             model.eval()
+            image_ids = []
+            pred_masks = []
 
-            val_iou = 0.0
             with torch.no_grad():
-                for val_image, val_gt_mask in val_dataloader:
-                    val_image = val_image.to(device)
-                    val_gt_mask = val_gt_mask.to(device)
+                for i, (image, _) in enumerate(test_dataloader):
+                    image = image.to(device)
 
                     # Forward pass
-                    output = model(val_image)
+                    test_output = model(image)
+                    test_output = torch.nn.Sigmoid()(test_output)
 
-                    # Compute IoU
-                    predicted_mask = (output > 0).float()
-                    val_iou += compute_iou(predicted_mask, val_gt_mask)
+                    # convert to binary image mask:
+                    pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
 
-                val_iou /= len(val_dataloader)
+                    # Save the predicted mask as image (for visualization) - do not submit these files!
+                    pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
+                    pred_mask_image.save(os.path.join(out_dir, f"{str(i).zfill(4)}_mask.png"))
 
-                val_iou *= 100
+                    # Update lists of image ids and masks
+                    image_ids.append(str(i).zfill(4))
+                    pred_masks.append(pred_mask)
 
-                print(f"[INFO]: Validation IoU: {val_iou.item():.2f}")
-
+                # Save predictions in Kaggle submission format
+                save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(out_dir, 'submission.csv'))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SML Project 2.")
