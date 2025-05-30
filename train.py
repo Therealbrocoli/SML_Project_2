@@ -31,7 +31,7 @@ def train(
     val_frequency = 1
 
     # Hyperparameters
-    num_epochs = 1
+    num_epochs = 10
     lr = 1e-4
     train_batch_size = 8
     # val_batch_size = 1
@@ -75,6 +75,7 @@ def train(
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # Training loop
+    print(f"[INFO]: Using device: {device}")
     print("[INFO]: Starting training...")
     for epoch in range(num_epochs):
         model.train()
@@ -158,7 +159,7 @@ if __name__ == "__main__":
     ckpt_dir = os.path.join(args.ckpt_dir, dt_string)
     os.makedirs(ckpt_dir, exist_ok=True)
     print("[INFO]: Model checkpoints will be saved to:", ckpt_dir)
-    print("PLEASE ARCHIVE PREDICTIONS AND RENAME THE FILE TO predictions{number}.csv")
+    print("PLEASE ARCHIVE PREDICTIONS FOLDER AND RENAME THE FOLDER TO predictions{number}.csv")
     # Set data root
     train_data_root = os.path.join(args.data_root, "train_data")
     print(f"[INFO]: Train data root: {train_data_root}")

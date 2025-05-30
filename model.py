@@ -1,4 +1,6 @@
 """Model: FCN = Fully Convolutional Network"""
+### RESOURCES: 
+# https://www.youtube.com/watch?v=rkWP6HNjTaI - Image Segmentation Using FCN-ResNet50 on a Custom Dataset | Deep Learning 
 
 import torch
 import torch.nn as nn
