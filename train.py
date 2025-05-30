@@ -71,7 +71,7 @@ def train(
     # Define Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    # Define Learning rate scheduler if needed
+    # Define Learning rate scheduler 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # Training loop
@@ -103,6 +103,9 @@ def train(
             # Trace output:
             print("         Training Loss: {}".format(loss.data.cpu().numpy()),
                   "- IoU: {}".format(compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())))
+            
+        # Update learning rate
+        lr_scheduler.step()
 
         # Save model
         torch.save(model.state_dict(), os.path.join(ckpt_dir, "last_epoch.pth"))
