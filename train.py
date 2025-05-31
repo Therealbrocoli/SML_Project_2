@@ -44,6 +44,7 @@ def train(
 
     # Choose Device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    print(f"[INFO]: Using device: {device}")
 
     # Define Dataset and DataLoader
     transform = transforms.Compose([
