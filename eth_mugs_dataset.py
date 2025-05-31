@@ -1,6 +1,4 @@
 """ETH Mugs Dataset."""
-
-
 import os
 from PIL import Image
 import torch
