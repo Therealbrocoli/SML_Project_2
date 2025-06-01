@@ -8,6 +8,8 @@ from torchvision import transforms
 
 from utils import IMAGE_SIZE, load_mask
 
+print("start")
+
 class ETHMugsDataset(Dataset): #maxi: Definiert eine neue Dataset-Klasse für ETH Mugs, basierend auf PyTorchs Dataset.
     def __init__(self, root_dir, mode="train"): #maxi: Initialisierungsmethode. Wird beim Erstellen des Objekts aufgerufen. Nimmt das Arbeitsverzeichnis und den Modus entgegen.
 
@@ -76,3 +78,5 @@ class ETHMugsDataset(Dataset): #maxi: Definiert eine neue Dataset-Klasse für ET
             image = self.transform(image)
 
         return image, mask
+    
+print("stop")
