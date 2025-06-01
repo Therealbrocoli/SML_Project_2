@@ -45,7 +45,13 @@ def train(
     print(f"[INFO]: Training batch size: {train_batch_size}")
 
     # Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    if torch.cuda.is_available():
+         device = torch.device("cuda")
+    elif torch.xpu.is_available():
+        device = torch.device("xpu")
+    else:
+        device = torch.device("cpu")
+
     # Gibt das verwendete Device (CPU/GPU) aus.
     print(f"[INFO]: Using device: {device}")
 
