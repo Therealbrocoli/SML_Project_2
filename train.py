@@ -15,7 +15,7 @@ from utils import IMAGE_SIZE, compute_iou, save_predictions
 from model import FCN  
 
 
-def build_model():  
+def build_model() -> FCN:  
     """Build the model."""
     return FCN(in_channels=3, out_channels=1) #maxi: Gibt ein FCN-Modell zurück, das 3 Eingangskanäle (RGB) und 1 Ausgangskanal (Maske) besitzt.
 
@@ -30,7 +30,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str):
     num_epochs = 10 #maxi: Anzahl der Trainingsepochen wird auf 10 gesetzt.
     lr = 1e-4 #maxi: Lernrate für den Optimierer.
     train_batch_size = 8 #maxi: Batchgröße fürs Training.
-    # val_batch_size = 1
+    # val_batch_size = 1b
     # ...
 
     print(f"[INFO]: Number of training epochs: {num_epochs}")
@@ -39,37 +39,37 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str):
 
 
     # Choose Device
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu") #maxi: Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
+    device: torch.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu") #maxi: Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
     print(f"[INFO]: Using device: {device}")
 
     # Define Dataset and DataLoader
-    transform = transforms.Compose([#maxi: Definiert eine Bildtransformation (Resize und ToTensor) als Pipeline.
+    transform = transforms.Compose([
         transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor(),
-    ])
+    ]) #maxi: Definiert eine Bildtransformation (Resize und ToTensor) als Pipeline.
 
-    train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
-    train_dataloader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
+    train_dataset: ETHMugsDataset = ETHMugsDataset(root_dir=train_data_root, mode="train") #maxi: Erstellt ein Trainings-Dataset-Objekt mit den Trainingsdaten.
+    train_dataloader: DataLoader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True) #maxi: Erzeugt einen DataLoader für das Training mit definierter Batchgröße und zufälliger Durchmischung.
 
-    test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val")
-    test_dataloader = DataLoader(test_dataset, batch_size=val_batch_size, shuffle=False)
+    test_dataset: ETHMugsDataset = ETHMugsDataset(root_dir=val_data_root, mode="val") #maxi: Erstellt ein Test-Dataset-Objekt für die Validierung.
+    test_dataloader: DataLoader = DataLoader(test_dataset, batch_size=val_batch_size, shuffle=False) #maxi: Erstellt einen DataLoader für die Validierung ohne Shuffle.
 
-    out_dir = os.path.join('prediction')
-    os.makedirs(out_dir, exist_ok=True)
+    out_dir: str = os.path.join('prediction') #maxi: Legt den Pfad zum Ordner für die Vorhersagen fest.
+    os.makedirs(out_dir, exist_ok=True) #maxi: Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
     print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
 
     # Define model
-    model = build_model()
-    model.to(device)
+    model: FCN = build_model()
+    model.to(device) #maxi: Verschiebt das Modell auf das gewählte Device (CPU oder GPU).
 
     # Define Loss function
-    criterion = torch.nn.BCELoss()  # or any other loss function suitable for your task
+    criterion: torch.nn.BCELoss = torch.nn.BCELoss()  # or any other loss function suitable for your task #maxi: Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
 
     # Define Optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer: torch.optim.Adam = torch.optim.Adam(model.parameters(), lr=lr) #maxi: Initialisiert den Adam-Optimizer mit Lernrate.
 
     # Define Learning rate scheduler 
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    lr_scheduler: torch.optim.lr_scheduler.StepLR = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1) # maxi: erstellt einen Scheduler, der die Lernrate alle 10 Epochen um den Faktor 0.1 reduziert.
 
     # Training loop
     print(f"[INFO]: Using device: {device}")
@@ -80,21 +80,21 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str):
         print(epoch)
         print('****************************')
 
-        for image, gt_mask in train_dataloader:
-            image = image.to(device)
-            gt_mask = gt_mask.to(device)
+        for image, gt_mask in train_dataloader: #maxi: Schleife über alle Trainings-Batches.
+            image = image.to(device) #maxi: Verschiebt die Eingabebilder auf das Device.
+            gt_mask = gt_mask.to(device) #maxi: Verschiebt die Ground-Truth-Masken auf das Device.
 
-            optimizer.zero_grad()
+            optimizer.zero_grad() #maxi: Setzt die Gradienten im Optimierer auf Null zurück.
 
              # Forward pass
-            output = model(image)
+            output = model(image) #maxi: Berechnet die Modellvorhersage für die Bilder.
 
             # Compute loss
-            loss = criterion(output, gt_mask.float())
+            loss = criterion(output, gt_mask.float()) #maxi: Berechnet den Loss zwischen Vorhersage und Ground Truth.
 
             # Backward pass
-            loss.backward()
-            optimizer.step()
+            loss.backward() #maxi: Backpropagation: Gradienten berechnen.
+            optimizer.step() #maxi: Aktualisiert die Modellparameter anhand der Gradienten.
 
             lr_scheduler.step()
 
