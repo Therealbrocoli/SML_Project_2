@@ -1,39 +1,35 @@
 """Code for training a model on the ETHMugs dataset."""
 
-import argparse
-import os
-from datetime import datetime
+import argparse #maxi: Importiert das Python-Modul, um Kommandozeilenargumente zu verarbeiten.
+import os #maxi: Importiert das Betriebssystem-Modul für Datei- und Verzeichnisoperationen.
+from datetime import datetime #maxi: Importiert die Klasse, um Zeitstempel für Ordnernamen oder Logs zu erzeugen.
 
-import torch
-from torch.utils.data import DataLoader
-from torchvision import transforms
+import torch #maxi: Importiert PyTorch, das Deep-Learning-Framework.
+from torch.utils.data import DataLoader #maxi: Importiert den DataLoader von PyTorch, um Daten in Batches zu laden.
+from torchvision import transforms #maxi: Importiert die Bild-Transformationen von torchvision.
 
-from PIL import Image
+from PIL import Image #maxi: Importiert die Bibliothek Pillow, um Bilddateien zu speichern oder zu laden.
 
-from eth_mugs_dataset import ETHMugsDataset
+from eth_mugs_dataset import ETHMugsDataset 
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from model import FCN  
 
 
 def build_model():  
     """Build the model."""
-    return FCN(in_channels=3, out_channels=1)
+    return FCN(in_channels=3, out_channels=1) #maxi: Gibt ein FCN-Modell zurück, das 3 Eingangskanäle (RGB) und 1 Ausgangskanal (Maske) besitzt.
 
-def train(
-    ckpt_dir: str,
-    train_data_root: str,
-    val_data_root: str,
-):
+def train(ckpt_dir: str, train_data_root: str, val_data_root: str):
     """Train function."""
     # Logging and validation settings
-    log_frequency = 10
-    val_batch_size = 1
-    val_frequency = 1
+    log_frequency = 10 #maxi: Legt fest, wie oft während des Trainings Logs ausgegeben werden.
+    val_batch_size = 1 #maxi: Setzt die Batchgröße für die Validierung 
+    val_frequency = 1 #maxi: Gibt an, nach wie vielen Epochen eine Validierung durchgeführt wird.
 
     # Hyperparameters
-    num_epochs = 10
-    lr = 1e-4
-    train_batch_size = 8
+    num_epochs = 10 #maxi: Anzahl der Trainingsepochen wird auf 10 gesetzt.
+    lr = 1e-4 #maxi: Lernrate für den Optimierer.
+    train_batch_size = 8 #maxi: Batchgröße fürs Training.
     # val_batch_size = 1
     # ...
 
@@ -43,11 +39,11 @@ def train(
 
 
     # Choose Device
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu") #maxi: Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
     print(f"[INFO]: Using device: {device}")
 
     # Define Dataset and DataLoader
-    transform = transforms.Compose([
+    transform = transforms.Compose([#maxi: Definiert eine Bildtransformation (Resize und ToTensor) als Pipeline.
         transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor(),
     ])
