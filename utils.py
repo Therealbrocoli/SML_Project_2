@@ -7,7 +7,7 @@ from PIL import Image
 
 IMAGE_SIZE = (252, 378)
 
-
+print("start")
 def load_mask(mask_path):
     """Loads the segmentation mask from the specified path.
 
@@ -68,3 +68,4 @@ def save_predictions(image_ids, pred_masks, save_path='submission.csv'):
         predictions['EncodedPixels'].append(f'{mask_rle}')
 
     pd.DataFrame(predictions).to_csv(save_path, index=False)
+print("stop")
