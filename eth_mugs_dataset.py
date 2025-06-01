@@ -9,32 +9,26 @@ from torchvision import transforms
 from utils import IMAGE_SIZE, load_mask
 
 class ETHMugsDataset(Dataset): # Definiert eine neue Dataset-Klasse für ETH Mugs, basierend auf PyTorchs Dataset.
-    def __init__(self, root_dir, mode="train"):
-        self.mode = mode
+    def __init__(self, root_dir, mode="train"): # Initialisierungsmethode. Wird beim Erstellen des Objekts aufgerufen. Nimmt das Arbeitsverzeichnis und den Modus entgegen.
+        self.mode = mode # string der "train" oder "test",heisst je nach dem mit was wir arbeiten wollen
 
-        if mode == "train":
-            self.root_dir = "./datasets/train_data"
-        elif mode == "test":
-            self.root_dir = "./datasets/test_data"
-        else:
-            if root_dir is not None:
-                self.root_dir = root_dir
-            else:
-                raise ValueError(f"Unknown mode {mode} and no root_dir specified.")
+        self.root_dir = root_dir #Speichert den PATH von ./dataset/test_data oder von ./dataset/train_data je nach dem was für einen Mode im Terminal gewählt wurde
 
-        self.rgb_dir = os.path.join(self.root_dir, "rgb")
-        self.mask_dir = os.path.join(self.root_dir, "masks")
+        self.rgb_dir = os.path.join(self.root_dir, "rgb") #Setzt den Pfad zum RGB-Ordner (mit Bildern) innerhalb von root_dir.
+        self.mask_dir = os.path.join(self.root_dir, "masks") #Setzt den Pfad zum Masken-Ordner (mit Segmentierungs-Masken).
 
-        self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
-        self.image_paths.sort()
+        self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")] #Liest alle .jpg-Dateien im RGB-Ordner und speichert sie als Liste.
+        self.image_paths.sort() #Sortiert die Bildliste alphabetisch für konsistente Reihenfolge.
 
         # Define image transformations
-        self.transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10),
-            transforms.Resize(IMAGE_SIZE),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), #https://docs.pytorch.org/vision/stable/transforms.html
+        self.transform = transforms.Compose([ # Definiert eine Pipeline für Bild-Transformations- und Vorverarbeitungsschritte (wie Flip, Rotation, Resize, ToTensor, Normalize).
+            transforms.RandomHorizontalFlip(), #Transformationsschritt
+            transforms.RandomRotation(10), #Transformationsschritt
+            transforms.Resize(IMAGE_SIZE), #Transformationsschritt
+            transforms.ToTensor(), #Transformationsschritt
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), 
+            #Transformationsschritt
+            #https://docs.pytorch.org/vision/stable/transforms.html
         ])
 
         # Define mask transformations
