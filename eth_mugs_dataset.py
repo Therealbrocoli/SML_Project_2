@@ -11,7 +11,17 @@ from utils import IMAGE_SIZE, load_mask
 class ETHMugsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
         self.mode = mode
-        self.root_dir = root_dir
+
+        if mode == "train":
+            self.root_dir = "./datasets/train_data"
+        elif mode == "test":
+            self.root_dir = "./datasets/test_data"
+        else:
+            if root_dir is not None:
+                self.root_dir = root_dir
+            else:
+                raise ValueError(f"Unknown mode {mode} and no root_dir specified.")
+
         self.rgb_dir = os.path.join(self.root_dir, "rgb")
         self.mask_dir = os.path.join(self.root_dir, "masks")
 
