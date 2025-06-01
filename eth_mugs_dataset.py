@@ -1,78 +1,60 @@
-"""ETH Mugs Dataset."""
-import os
-from PIL import Image
-import torch
+"""ETH Mugs Dataset."""  # Modulbeschreibung, was der Code macht.
+import os  # Importiert das Modul für Betriebssystem- und Pfad-Operationen.
+from PIL import Image  # Importiert PIL, um Bilder zu öffnen und zu bearbeiten.
+import torch  # Importiert PyTorch, das Framework für Deep Learning.
 
-from torch.utils.data import Dataset
-from torchvision import transforms
+from torch.utils.data import Dataset  # Importiert die Dataset-Basisklasse für eigene Datensätze.
+from torchvision import transforms  # Importiert Bildtransformationen und Augmentationen.
 
-from utils import IMAGE_SIZE, load_mask
+from utils import IMAGE_SIZE, load_mask  # Importiert eine Bildgrößen-Konstante und eine Funktion (hier nicht genutzt).
 
-class ETHMugsDataset(Dataset): #maxi: Definiert eine neue Dataset-Klasse für ETH Mugs, basierend auf PyTorchs Dataset.
-    def __init__(self, root_dir, mode="train"): #maxi: Initialisierungsmethode. Wird beim Erstellen des Objekts aufgerufen. Nimmt das Arbeitsverzeichnis und den Modus entgegen.
+class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mugs, basierend auf PyTorchs Dataset.
+    def __init__(self, root_dir, mode="train"):  # Initialisierungsmethode, setzt Pfade und Mode (train/test).
+        self.mode = mode  # Merkt sich ob train oder test.
+        self.root_dir = root_dir  # Pfad zum Wurzelordner für die Daten (train oder test).
 
-        self.mode = mode #maxi: string der "train" oder "test",heisst je nach dem mit was wir arbeiten wollen
+        self.rgb_dir = os.path.join(self.root_dir, "rgb")  # Setzt den Pfad zum RGB-Bildordner.
+        self.mask_dir = os.path.join(self.root_dir, "masks")  # Setzt den Pfad zum Maskenordner.
 
-        self.root_dir = root_dir #maxi: Speichert den PATH von ./dataset/test_data oder von ./dataset/train_data je nach dem was für einen Mode im Terminal gewählt wurde
-        self.rgb_dir = os.path.join(self.root_dir, "rgb") #maxi: Setzt den Pfad zum RGB-Ordner (mit Bildern) innerhalb von root_dir.
-        self.mask_dir = os.path.join(self.root_dir, "masks") #maxi: Setzt den Pfad zum Masken-Ordner (mit Segmentierungs-Masken).
-        
-        self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")] #maxi: Liest alle .jpg-Dateien im RGB-Ordner und speichert sie als Liste.
-        self.image_paths.sort() #maxi: Sortiert die Bildliste alphabetisch für konsistente Reihenfolge.
-        
-        self.transform = None #maxi: macht die Transformation
-        self.mask_transform = None #maxi: macht die Transformation
+        self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]  # Liste aller .jpg-Bilder im RGB-Ordner.
+        self.image_paths.sort()  # Sortiert die Bildnamen alphabetisch für stabile Reihenfolge.
 
-        """
-        # Define image transformations
-        self.transform = transforms.Compose([ # Definiert eine Pipeline für Bild-Transformations- und Vorverarbeitungsschritte (wie Flip, Rotation, Resize, ToTensor, Normalize).
-            transforms.RandomHorizontalFlip(), #Transformationsschritt
-            transforms.RandomRotation(10), #Transformationsschritt
-            transforms.Resize(IMAGE_SIZE), #Transformationsschritt
-            transforms.ToTensor(), #Transformationsschritt
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), 
-            #Transformationsschritt
-            #https://docs.pytorch.org/vision/stable/transforms.html
+        # Definiert die Transformationen für die Bilder.
+        self.transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
+            transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
+            transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
+            transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
         ])
-        """
-        """
-        # Define mask transformations
+
+        # Definiert die Transformationen für die Masken.
         self.mask_transform = transforms.Compose([
-            transforms.Resize((252, 376)),  # Resize to match the model's output dimensions
-            transforms.ToTensor(),
+            transforms.Resize((252, 376)),  # Setzt die Maske auf einheitliche Zielgröße.
+            transforms.ToTensor(),          # Wandelt die Maske in einen Tensor um (Werte 0–1).
         ])
-        """
 
-        print("[INFO] Dataset mode:", mode) #maxi: Gibt beim Initialisieren den Modus aus.
-        print("[INFO] Number of images in the ETHMugDataset:", len(self.image_paths)) #naxi: Gibt die Bildanzahl im Dataset aus.
+        print("[INFO] Dataset mode:", mode)  # Gibt aus, welcher Mode genutzt wird (train/test).
+        print("[INFO] Number of images in the ETHMugDataset:", len(self.image_paths))  # Gibt die Anzahl der Bilder im Datensatz aus.
 
-    def __len__(self): #maxi: Implementiert die Längenfunktion, die zurückgibt, wie viele Bilder vorhanden sind.
-        return len(self.image_paths) #maxi: Gibt die Länge der Bildliste zurück.
+    def __len__(self):  # Ermöglicht len(dataset); gibt die Anzahl der Bilder zurück.
+        return len(self.image_paths)  # Gibt die Länge der Bildliste zurück.
 
-    def __getitem__(self, idx: int): #maxi: Ermöglicht das Zugreifen auf das idx-te Bild+Maske mit eckigen Klammern (z.B. dataset[5]).
-        img_name = os.path.join(self.rgb_dir, self.image_paths[idx]) #maxi: Baut den Dateipfad zum idx-ten Bild.
-        image = Image.open(img_name).convert('RGB') #maxi: Öffnet das Bild und wandelt es zu RGB um.
+    def __getitem__(self, idx: int):  # Holt das Bild + Maske zum gegebenen Index (dataset[idx]).
+        img_name = os.path.join(self.rgb_dir, self.image_paths[idx])  # Baut Pfad zum Bild auf.
+        image = Image.open(img_name).convert('RGB')  # Öffnet das Bild als RGB.
 
-        if self.mode == "train":
-            # Extract the base filename without extension and any suffix like '_rgb'
-            img_base_name = os.path.splitext(self.image_paths[idx])[0].split('_rgb')[0] #maxi: Holt sich den Basisnamen ohne .jpg und optionales '_rgb' für die Maskensuche.
-
-            # Construct the mask filename based on the actual naming convention
-            mask_name = os.path.join(self.mask_dir, f"{img_base_name}_mask.png") #maxi: Sucht den Maskenpfad, der zu diesem Bild gehört.
-
-            # Debugging information
-            # print(f"[DEBUG] Looking for mask at: {mask_name}")
-
-            if not os.path.exists(mask_name):
-                raise FileNotFoundError(f"The mask file {mask_name} does not exist.")
-
-            mask = Image.open(mask_name).convert('L')  # Load mask as grayscale
-            mask = self.mask_transform(mask)  # Apply mask transformations
+        if self.mode == "train":  # Nur im Training werden echte Masken geladen.
+            img_base_name = os.path.splitext(self.image_paths[idx])[0].split('_rgb')[0]  # Extrahiert den Basisnamen ohne Suffix und Extension.
+            mask_name = os.path.join(self.mask_dir, f"{img_base_name}_mask.png")  # Sucht zugehörigen Maskenpfad.
+            if not os.path.exists(mask_name):  # Prüft, ob die Maske existiert.
+                raise FileNotFoundError(f"The mask file {mask_name} does not exist.")  # Fehler, falls Maske fehlt.
+            mask = Image.open(mask_name).convert('L')  # Öffnet die Maske als Graustufenbild.
+            mask = self.mask_transform(mask)  # Transformiert die Maske.
         else:
-            # In test mode, return a dummy mask or None if masks are not required
-            mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Dummy mask for test mode
+            mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Gibt Dummy-Maske zurück, falls nicht train.
 
-        if self.transform:
-            image = self.transform(image)
+        if self.transform:  # Wenn Transformationen gesetzt sind.
+            image = self.transform(image)  # Transformiert das Bild.
 
-        return image, mask
+        return image, mask  # Gibt Bild und Maske (beides als Tensor) zurück.
