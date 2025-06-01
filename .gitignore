@@ -1,5 +1,4 @@
 # these files will be ignored by git sync
 __pycache__/
 Archive/
-datasets/
 checkpoints/
