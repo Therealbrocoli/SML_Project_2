@@ -51,6 +51,8 @@ class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mu
                 raise FileNotFoundError(f"The mask file {mask_name} does not exist.")  # Fehler, falls Maske fehlt.
             mask = Image.open(mask_name).convert('L')  # Öffnet die Maske als Graustufenbild.
             mask = self.mask_transform(mask)  # Transformiert die Maske.
+            print(f"[INFO] Mask shape: {mask.shape} and min/max values: {mask.min()}, {mask.max()}")  # Debugging-Ausgabe der Maske.
+
         else:
             mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Gibt Dummy-Maske zurück, falls nicht train.
 

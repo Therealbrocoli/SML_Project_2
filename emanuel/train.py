@@ -9,9 +9,8 @@ from PIL import Image
 from eth_mugs_dataset import ETHMugsDataset
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from model import FCN
-print(torch.cuda.is_available())
-print(torch.cuda.device_count())
-print(torch.cuda.get_device_name(0))
+
+print()
 # Definiert eine Funktion, die das Modell erzeugt.
 def build_model():
     # Beschreibt in einem Docstring, dass hier das Modell gebaut wird.
@@ -47,16 +46,20 @@ def train(
     # Gibt die Trainings-Batchgröße aus.
     print(f"[INFO]: Training batch size: {train_batch_size}")
 
-    # Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
+    # Prüft, ob eine gpu verfügbar ist und wählt das richtige Device.
     if torch.cuda.is_available():
          device = torch.device("cuda")
+         gpu = torch.cuda.get_device_name(0)
     elif torch.xpu.is_available():
         device = torch.device("xpu")
+        gpu = torch.xppu.get_device_name(0)
     else:
         device = torch.device("cpu")
+        gpu = "Intel CPU"
 
-    # Gibt das verwendete Device (CPU/GPU) aus.
-    print(f"[INFO]: Using device: {device}")
+    # Gibt das verwendete Device (CPU/gpu) aus.
+    print(f"[INFO]: Using device: {gpu}")
+    print(f"[INFO]: Using platform: {device}")
 
     # Definiert eine Bildtransformation (Resize und ToTensor) als Pipeline.
     transform = transforms.Compose([
@@ -83,18 +86,16 @@ def train(
 
     # Baut das Modell mit der zuvor definierten Funktion.
     model = build_model()
-    # Verschiebt das Modell auf das gewählte Device (CPU oder GPU).
+    # Verschiebt das Modell auf das gewählte Device (CPU oder gpu).
     model.to(device)
 
     # Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCEWithLogitsLoss ()
     # Initialisiert den Adam-Optimizer mit Lernrate.
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     # Erstellt einen Scheduler, der die Lernrate alle 10 Epochen um den Faktor 0.1 reduziert.
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-    # Gibt erneut das verwendete Device aus (redundant).
-    print(f"[INFO]: Using device: {device}")
     # Gibt aus, dass das Training startet.
     print("[INFO]: Starting training...")
 
@@ -154,7 +155,7 @@ def train(
                     # Berechnet die Vorhersage des Modells für das Testbild.
                     test_output = model(image)
                     # Wendet eine Sigmoid-Funktion auf die Modellvorhersage an (für binäre Segmentierung).
-                    test_output = torch.nn.Sigmoid()(test_output)
+                    # test_output = torch.nn.Sigmoid()(test_output)
                     # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
                     pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
                     # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
