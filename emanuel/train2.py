@@ -6,6 +6,7 @@ from PIL import Image
 from eth_mugs_dataset2 import ETHMugsDataset
 from utils import compute_iou, save_predictions
 from model2 import UNet
+from monai.losses import DiceLoss
 
 def build_model():
     """Erstellt und gibt das UNet-Modell zurück."""
@@ -43,7 +44,7 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
 
     # Initialisierung des Modells, der Verlustfunktion und des Optimierers
     model = build_model().to(device)                                        # Model wird festgelegt 
-    criterion = torch.nn.BCELoss()                                          # Verlustfunktion für binäre Klassifikation
+    criterion = DiceLoss(sigmoid=true)                                          # Verlustfunktion für binäre Klassifikation
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)       # Optimierer (Stochastic Gradient Descent)
 
     print("[INFO]: Starte das Training...")
@@ -80,7 +81,7 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
 
  # (Gradienten werden nur für das Training des Modells benötigt (während der Backpropagation). 
         # Das Deaktivieren mit .no_grad() spart Speicher und Rechenzeit, da keine zusätzlichen Informationen für den Gradientenabstieg gespeichert und berechnet werden müssen.)
-    with torch.no_grad():
+    with torch.no_grad():    
         # Schleife über den Test-Datenlader
         for i, test_image in enumerate(test_dataloader):
             # 1. Bild auf das richtige Gerät verschieben (z.B. GPU)
