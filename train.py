@@ -9,7 +9,7 @@ from PIL import Image
 from eth_mugs_dataset import ETHMugsDataset
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from model import FCN
-
+#test
 # Definiert eine Funktion, die das Modell erzeugt.
 def build_model():
     # Beschreibt in einem Docstring, dass hier das Modell gebaut wird.
@@ -22,7 +22,7 @@ def train(
     ckpt_dir: str,
     train_data_root: str,
     val_data_root: str,
-    
+
 ):
     # Legt fest, wie oft während des Trainings Logs ausgegeben werden.
     log_frequency = 10
