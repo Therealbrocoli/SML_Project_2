@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import torch
 from torch.utils.data import DataLoader, random_split
-from eth_mugs_dataset import ETHMugsDataset
+from mugs import ETHMugsDataset
 from unet_simplistic import UNet
 from utils import compute_iou
 
