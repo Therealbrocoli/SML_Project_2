@@ -19,9 +19,18 @@ import torchvision.transforms as T
 
 from utils import load_mask, compute_iou, mask_to_rle
 
+# ANSI Colors für Terminal-Ausgabe
+BOLD = "\033[1m"
+CYAN = "\033[96m"
+YELLOW = "\033[93m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+RESET = "\033[0m"
+
 # ----------------- Einstellungen -----------------
 DATA_DIR       = "datasets"
 CHECKPOINT_DIR = "checkpoints"
+PREDICT_DIR    = "prediction"
 BATCH_SIZE     = 8
 LR             = 1e-4
 EPOCHS         = 10
@@ -36,7 +45,6 @@ torch.manual_seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 
-# ---- Wichtig! Die gleiche Normalisierung für alles! ----
 NORM = T.Normalize([0.485,0.456,0.406], [0.229,0.224,0.225])
 
 # ----------------- Dataset -----------------
@@ -62,8 +70,6 @@ class EthMugsDataset(Dataset):
         mask_path = os.path.join(self.mask_dir, f"{n}_mask.png")
         img = Image.open(img_path).convert("RGB")
         mask = Image.open(mask_path).convert("L")
-
-        # PIL-Augmentierungen (synchron, nur beim Training)
         if self.augment:
             if random.random() < 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -74,12 +80,11 @@ class EthMugsDataset(Dataset):
                 mask = mask.rotate(angle, resample=Image.NEAREST)
             if random.random() < 0.5:
                 img = self.color_jitter(img)
-
         img_t = self.to_tensor(img)
-        img_t = self.norm(img_t)  # *** Wichtig: Norm immer anwenden! ***
+        img_t = self.norm(img_t)
         mask_np = np.array(mask).astype(np.float32) / 255.0
         mask_t = torch.from_numpy(mask_np).unsqueeze(0)
-        mask_t = (mask_t > 0.5).float()  # Binär
+        mask_t = (mask_t > 0.5).float()
         return img_t, mask_t
 
 def train_val_split(train_data_dir, val_ratio=VAL_RATIO, seed=SEED):
@@ -168,6 +173,7 @@ def train_one_epoch(model, loader, opt):
     model.train()
     total_loss = 0.0
     bce = nn.BCEWithLogitsLoss()
+    t_start = time.time()
     for img, m in loader:
         img, m = img.to(DEVICE), m.to(DEVICE)
         opt.zero_grad()
@@ -176,6 +182,8 @@ def train_one_epoch(model, loader, opt):
         loss.backward()
         opt.step()
         total_loss += loss.item() * img.size(0)
+    t_end = time.time()
+    print(f"    {CYAN}Train-Durchlauf Zeit: {t_end-t_start:.2f} Sekunden{RESET}")
     return total_loss / len(loader.dataset)
 
 @torch.no_grad()
@@ -185,6 +193,7 @@ def validate_one_epoch(model, loader):
     total_iou = 0.0
     batches = 0
     bce = nn.BCEWithLogitsLoss()
+    t_start = time.time()
     for img, m in loader:
         img, m = img.to(DEVICE), m.to(DEVICE)
         logits = model(img)
@@ -198,51 +207,105 @@ def validate_one_epoch(model, loader):
             iou_batch += compute_iou(p, g)
         total_iou += iou_batch / preds.size(0)
         batches += 1
+    t_end = time.time()
+    print(f"    {CYAN}Validation-Durchlauf Zeit: {t_end-t_start:.2f} Sekunden{RESET}")
     return total_loss / len(loader.dataset), total_iou / batches
 
-# ----------------- Inferenz & Submission -----------------
+# ----------------- Inferenz & Submission & Einzelbildspeicherung -----------------
 @torch.no_grad()
 def inference(model):
+    print(f"{YELLOW}Starte Inferenz für Testdaten ...{RESET}")
     model.eval()
     ids, rles = [], []
     td = os.path.join(DATA_DIR, "test_data", "rgb")
+    os.makedirs(PREDICT_DIR, exist_ok=True)
     files = sorted(f.replace("_rgb","")[:-4] for f in os.listdir(td) if f.endswith((".jpg",".png")))
     to_t = T.ToTensor()
+    t_start = time.time()
     for n in files:
         p_jpg = os.path.join(td, f"{n}_rgb.jpg")
         p_png = os.path.join(td, f"{n}_rgb.png")
         img = Image.open(p_jpg if os.path.exists(p_jpg) else p_png).convert("RGB")
         t = to_t(img)
-        t = NORM(t).unsqueeze(0).to(DEVICE)  # *** GENAUSO wie im Training! ***
+        t = NORM(t).unsqueeze(0).to(DEVICE)
         logit = model(t)
         pm = (torch.sigmoid(logit) > 0.5).cpu().numpy()[0,0].astype(np.uint8)
+
+        # Einzelbild speichern
+        out_path = os.path.join(PREDICT_DIR, f"{n}_pred.png")
+        Image.fromarray((pm * 255).astype(np.uint8)).save(out_path)
+
+        # Robust gegen Nulls:
+        rle = mask_to_rle(pm)
+        if rle is None or rle == '' or pd.isna(rle):
+            rle = '1 1'  # Default: "leere" Maske im RLE-Format
         ids.append(n)
-        rles.append(mask_to_rle(pm))
+        rles.append(rle)
+    t_end = time.time()
+    print(f"{CYAN}Inferenz-Zeit für {len(files)} Bilder: {t_end-t_start:.2f} Sekunden{RESET}")
     df = pd.DataFrame({"ImageId": ids, "EncodedPixels": rles})
-    df.to_csv(os.path.join(CHECKPOINT_DIR, "submission.csv"), index=False)
+    if df.isnull().values.any():
+        print(f"{RED}Warnung: Submission hätte Nullwerte!{RESET}")
+        df = df.fillna('1 1')
+    outpath = os.path.join(CHECKPOINT_DIR, "submission.csv")
+    df.to_csv(outpath, index=False)
+    print(f"{GREEN}Submission gespeichert unter:{RESET} {outpath}")
+    print(f"{GREEN}Prediction-Bilder gespeichert im Ordner:{RESET} {PREDICT_DIR}")
 
 # ----------------- Hauptprogramm -----------------
 if __name__ == "__main__":
-    print("Verwende Device:", DEVICE)
-    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
-    train_names, val_names = train_val_split(os.path.join(DATA_DIR, "train_data"))
-    print(f"[Split] Train: {len(train_names)}, Val: {len(val_names)}")
+    print(f"{BOLD}{CYAN}{'='*48}{RESET}")
+    print(f"{BOLD}{CYAN} ETH MUGS SEGMENTATION TRAINING{RESET}")
+    print(f"{BOLD}{CYAN}{'='*48}{RESET}")
+    print(f"{BOLD}Gerät:{RESET} {DEVICE}")
+    if DEVICE.type == "cuda":
+        print(f"{GREEN}CUDA Name: {torch.cuda.get_device_name(0)}{RESET}")
+    print(f"{BOLD}Random Seed:{RESET} {SEED}")
+    print(f"{BOLD}Epochen:{RESET} {EPOCHS}")
+    print(f"{BOLD}Datenpfad:{RESET} {DATA_DIR}")
+    print(f"{BOLD}Checkpoint-Verzeichnis:{RESET} {CHECKPOINT_DIR}")
+    print(f"{BOLD}Prediction-Ordner:{RESET} {PREDICT_DIR}")
+    print(f"{BOLD}{'-'*48}{RESET}")
 
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    t_split = time.time()
+    train_names, val_names = train_val_split(os.path.join(DATA_DIR, "train_data"))
+    t_split = time.time() - t_split
+    print(f"{BOLD}Trainings-/Val-Split:{RESET} {len(train_names)} / {len(val_names)} (Dauer: {t_split:.2f}s)")
+    print(f"{BOLD}Lade Datasets und erstelle DataLoader ...{RESET}")
+    t_loader = time.time()
     train_ds = EthMugsDataset(os.path.join(DATA_DIR, "train_data"), file_list=train_names, augment=True)
     val_ds   = EthMugsDataset(os.path.join(DATA_DIR, "train_data"), file_list=val_names, augment=False)
     train_ld = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=2, pin_memory=True)
     val_ld   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=2, pin_memory=True)
+    t_loader = time.time() - t_loader
+    print(f"{GREEN}Loader bereit. (Dauer: {t_loader:.2f}s){RESET}")
+
+    print(f"{BOLD}Initialisiere Modell und Optimizer ...{RESET}")
     net = UNet(base=BASE_CH).to(DEVICE)
     opt = optim.Adam(net.parameters(), lr=LR)
     best_iou = 0.0
+
+    print(f"{BOLD}{CYAN}{'-'*48}{RESET}")
+    print(f"{BOLD}{CYAN}Starte Training ...{RESET}")
+    print(f"{BOLD}{CYAN}{'-'*48}{RESET}")
+
+    t_total = time.time()
     for epoch in range(1, EPOCHS+1):
-        t0 = time.time()
+        t_epoch = time.time()
+        print(f"{BOLD}{YELLOW}EPOCH {epoch}/{EPOCHS}{RESET}")
         tl = train_one_epoch(net, train_ld, opt)
         vl, vi = validate_one_epoch(net, val_ld)
         if vi > best_iou:
             best_iou = vi
             torch.save(net.state_dict(), os.path.join(CHECKPOINT_DIR, "best_model.pth"))
-        print(f"Epoch {epoch}/{EPOCHS} | Train Loss: {tl:.4f} | Val Loss: {vl:.4f} | Val IoU: {vi:.4f} | Best IoU: {best_iou:.4f} | Time: {time.time()-t0:.1f}s")
+            print(f"    {GREEN}Neues bestes Modell gespeichert! Val IoU: {vi:.4f}{RESET}")
+        print(f"    Train Loss: {tl:.4f} | Val Loss: {vl:.4f} | Val IoU: {vi:.4f} | Best IoU: {best_iou:.4f} | {CYAN}Epoch-Zeit: {time.time()-t_epoch:.1f}s{RESET}")
+        print(f"{'-'*48}")
+    t_total = time.time() - t_total
+    print(f"{BOLD}{GREEN}Training abgeschlossen. Gesamtzeit: {t_total:.1f}s{RESET}")
+
+    print(f"{BOLD}{CYAN}Lade bestes Modell für Inferenz ...{RESET}")
     net.load_state_dict(torch.load(os.path.join(CHECKPOINT_DIR, "best_model.pth"), map_location=DEVICE))
     inference(net)
-    print("Fertig. Submission gespeichert unter", os.path.join(CHECKPOINT_DIR, "submission.csv"))
+    print(f"{BOLD}{GREEN}Fertig. Viel Erfolg beim Einreichen!{RESET}")
