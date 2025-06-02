@@ -22,6 +22,7 @@ def train(
     ckpt_dir: str,
     train_data_root: str,
     val_data_root: str,
+    
 ):
     # Legt fest, wie oft während des Trainings Logs ausgegeben werden.
     log_frequency = 10
@@ -165,6 +166,7 @@ def train(
 
                 # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
                 save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(out_dir, 'submission.csv'))
+                print(f"[INFO]: Predictions saved to {os.path.join(out_dir, 'submission.csv')}")
 
 # Prüft, ob das Skript direkt ausgeführt wird.
 if __name__ == "__main__":
