@@ -1,67 +1,51 @@
-"""Utility functions."""
+"""utils.py"""
 
 import numpy as np
 import pandas as pd
-
 from PIL import Image
 
-IMAGE_SIZE = (252, 378)
+IMAGE_SIZE = (252, 378)  # (width, height), nur als Orientierung
 
-def load_mask(mask_path):
-    """Loads the segmentation mask from the specified path.
-
-    Inputs:
-        mask_path (str): the path from which the segmentation mask will be read.
-        It should have the format "/PATH/TO/LOAD/DIR/XXXX_mask.png".
-
-    Outputs:
-        mask (np.array): segmentation mask as a numpy array.
+def load_mask(mask_path: str) -> np.ndarray:
+    """
+    Lädt eine Segmentierungsmaske (PNG) und gibt ein 2D-array (0 oder 1) zurück.
     """
     mask = np.asarray(Image.open(mask_path)).astype(int)
     if mask.max() > 1:
         mask = mask // 255
     return mask
 
-
-def mask_to_rle(mask):
+def mask_to_rle(mask: np.ndarray) -> str:
     """
-    Convert a binary mask (2D numpy array) to RLE (column-major).
-    Returns a string of space-separated values.
+    Konvertiert eine binäre Maske (2D) in RLE (Run-Length-Encoding), spaltenweise (Fortran-Order).
+    Rückgabe: Space-separierter String (z.B. "3 5 10 2 …").
     """
-    pixels = mask.flatten(order='F')  # Fortran order (column-major)
-    pixels = np.concatenate([[0], pixels, [0]])  # pad with zeros to catch transitions
+    pixels = mask.flatten(order='F')  # Spaltenweise flatten
+    pixels = np.concatenate([[0], pixels, [0]])  # Padding
     runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
-    runs[1::2] = runs[1::2] - runs[::2]  # calculate run lengths
+    runs[1::2] = runs[1::2] - runs[::2]
     return ' '.join(str(x) for x in runs)
 
+def compute_iou(pred_mask: np.ndarray, gt_mask: np.ndarray, eps: float = 1e-6) -> float:
+    """
+    Berechnet IoU (Intersection over Union) für binäre Masken (0/1).
+    """
+    intersection = (pred_mask & gt_mask).astype(float).sum()
+    union = (pred_mask | gt_mask).astype(float).sum()
+    iou = (intersection + eps) / (union + eps)
+    return iou
 
-def compute_iou(pred_mask, gt_mask, threshold=0.5):
-    # Ensure the masks are in the correct format
-    pred_mask = pred_mask > threshold
-    gt_mask = gt_mask > threshold
-
-    # Calculate intersection and union
-    intersection = np.logical_and(pred_mask, gt_mask)
-    union = np.logical_or(pred_mask, gt_mask)
-
-    # Calculate IoU
-    iou_score = np.sum(intersection) / np.sum(union)
-
-    return iou_score
-
-
-
-def save_predictions(image_ids, pred_masks, save_path='submission.csv'):
-    '''
-    image_ids: list of image_ids [0000, 0001, ...]
-    pred_masks: binary 2D numpy array
-    '''
-    assert len(image_ids) == len(pred_masks)
+def save_predictions(image_ids: list[str], pred_masks: list[np.ndarray], save_path: str = 'submission.csv'):
+    """
+    Schreibt eine CSV für Kaggle-Submission:
+      - ImageId: z.B. "0001"
+      - EncodedPixels: RLE-String
+    """
+    assert len(image_ids) == len(pred_masks), "Anzahl IDs und Masken muss gleich sein."
     predictions = {'ImageId': [], 'EncodedPixels': []}
-    for i in range(len(image_ids)):
-        mask = pred_masks[i]
-        mask_rle = mask_to_rle(mask)
-        predictions['ImageId'].append(image_ids[i])
-        predictions['EncodedPixels'].append(f'{mask_rle}')
-
+    for img_id, mask in zip(image_ids, pred_masks):
+        rle = mask_to_rle(mask)
+        predictions['ImageId'].append(img_id)
+        predictions['EncodedPixels'].append(rle)
     pd.DataFrame(predictions).to_csv(save_path, index=False)
+    print(f"[INFO] Submission-CSV gespeichert: {save_path}")
