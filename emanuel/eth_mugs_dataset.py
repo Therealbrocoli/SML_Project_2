@@ -24,6 +24,7 @@ class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mu
             transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
             transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
             transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
+            transforms.ColorJitter(brightness=0.2, contrast=0.2),  # Anpassung von Helligkeit und Kontrast.
             transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
         ])
@@ -51,6 +52,7 @@ class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mu
                 raise FileNotFoundError(f"The mask file {mask_name} does not exist.")  # Fehler, falls Maske fehlt.
             mask = Image.open(mask_name).convert('L')  # Öffnet die Maske als Graustufenbild.
             mask = self.mask_transform(mask)  # Transformiert die Maske.
+
         else:
             mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Gibt Dummy-Maske zurück, falls nicht train.
 
