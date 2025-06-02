@@ -44,7 +44,7 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
 
     # Initialisierung des Modells, der Verlustfunktion und des Optimierers
     model = build_model().to(device)                                        # Model wird festgelegt 
-    criterion = DiceLoss(sigmoid=True)                                          # Verlustfunktion für binäre Klassifikation
+    criterion = DiceLoss(sigmoid=True)                                      # https://docs.monai.io/en/stable/losses.html#diceloss
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)       # Optimierer (Stochastic Gradient Descent)
 
     print("[INFO]: Starte das Training...")
