@@ -18,6 +18,7 @@ If you have a computer with a GPU, you might want to run the project locally. In
 
 If you are using Windows, we recommend to use either the VS code terminal or the Anaconda terminal, which is installed with Anaconda.
 
+########################################################################################################
 Please activate your project 2 environment by using:
 ```
 conda activate <environment_name>
@@ -31,7 +32,29 @@ If you require any additional packages, run:
 ```
 pip install <package_name>
 ```
+Then please run
+```
+pip freeze > requirements.txt
+```
+To save the current pip entries to your pip
+````####################################################################################################
+Ihr müsst das env selber erstellen, am besten geht ihr in die anaconda powershell schreibt dort
 
+conda init powershell
+
+Dann könnt ihr conda als Begriff in VS benutzen
+
+conda create —name project2_env python=3.11
+
+Jetzt habt ihr ein globales Environment erstellt.
+
+Jetzt könnt ihr in VS gehen, falls ihr es noch nicht seit, schauendes der Ordnerpfad stimmt
+Dann 
+conda activate project2_env
+python.exe -m pip install —upgrade pip
+pip install -r requirements.txt
+``
+#######################################################################################################
 Make sure to extract all the data in the `./datasets` folder.
 
 ## Running Code
