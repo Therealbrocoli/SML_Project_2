@@ -56,6 +56,15 @@ def train(
 
     """Train function."""
 
+    
+    # CUDA-Check und Geräteausgabe
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print(f"[INFO]: CUDA is available. Using GPU: {torch.cuda.get_device_name(0)}")
+    else:
+        device = torch.device("cpu")
+        print("[WARNING]: CUDA is not available. Using CPU.")
+
     # Logging and validation settings
 
     train_batch_size = 8

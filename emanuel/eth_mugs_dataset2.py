@@ -32,10 +32,23 @@ class ETHMugsDataset(Dataset):
             self.mask_paths = sorted([os.path.join(self.mask_dir, el) for el in os.listdir(self.mask_dir) if el.endswith('_mask.png')])
             assert len(self.image_paths) == len(self.mask_paths)
 
-        # set image transforms - these transforms will be applied to pre-process the data before passing it through the model
-        self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
-        self.mask_transform = transforms.Compose([transforms.ToTensor()])
+        # Image-Transform: PIL → Augmentierung → Tensor
+        self.transform = transforms.Compose([
+            transforms.Resize((252, 376)),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(10),
+            transforms.RandAugment(num_ops=2, magnitude=5),  # optional: just a light augmentation
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
 
+        # Maske: keine Augmentierung – nur Resize und ToTensor
+        self.mask_transform = transforms.Compose([
+            transforms.Resize((252, 376)),
+            transforms.ToTensor()
+        ])
+        
         print("[INFO] Dataset mode:", mode)
         print("[INFO] Number of images in the ETHMugDataset: {}".format(len(self.image_paths)))
 
