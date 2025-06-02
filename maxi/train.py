@@ -1,10 +1,11 @@
+"""train.py"""
 import argparse
 import os
 from datetime import datetime
 import torch
 from torch.utils.data import DataLoader, random_split
 from mugs import ETHMugsDataset
-from unet_simplistic import UNet
+from unet_model import UNet
 from utils import compute_iou
 
 def build_model():
