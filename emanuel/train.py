@@ -9,7 +9,9 @@ from PIL import Image
 from eth_mugs_dataset import ETHMugsDataset
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from model import FCN
-
+print(torch.cuda.is_available())
+print(torch.cuda.device_count())
+print(torch.cuda.get_device_name(0))
 # Definiert eine Funktion, die das Modell erzeugt.
 def build_model():
     # Beschreibt in einem Docstring, dass hier das Modell gebaut wird.
