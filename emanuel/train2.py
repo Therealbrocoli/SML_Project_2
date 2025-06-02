@@ -8,6 +8,7 @@ from utils import compute_iou, save_predictions
 from model2 import UNet
 from monai.losses import DiceLoss
 
+
 def build_model():
     """Erstellt und gibt das UNet-Modell zurück."""
     return UNet(3, 1)
