@@ -23,7 +23,6 @@ class ETHMugsDataset(Dataset):
             self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
 
             self.transform = transforms.Compose([
-                transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomAdjustSharpness(sharpness_factor=2.0, p=0.5),
                 transforms.Resize(IMAGE_SIZE),
                 transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.

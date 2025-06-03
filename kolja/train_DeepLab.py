@@ -79,9 +79,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     # Erstelle DataLoader für Trainings- und Validierungsdaten
     train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
-    full_train_dataset.mode = "val"
     val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
-    full_train_dataset.mode = "train"
 
     """
     for images_batch, masks_batch in train_loader:
