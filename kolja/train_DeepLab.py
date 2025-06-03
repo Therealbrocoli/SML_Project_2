@@ -1,6 +1,8 @@
 """Code for training a model on the ETHMugs dataset."""# which is a mask
 import argparse
 import os
+import random
+import numpy as np
 from datetime import datetime
 import torch
 from torch.utils.data import DataLoader, random_split
@@ -22,7 +24,10 @@ def train(
     train_data_root: str,
     val_data_root: str,
 
-):
+):  
+    #seeds für das Training
+    torch.manual_seed(42)
+    random.seed(42)
     # Legt fest, wie oft während des Trainings Logs ausgegeben werden.
     log_frequency = 10
     # Setzt die Batchgröße für die Validierung auf 1.
@@ -69,9 +74,8 @@ def train(
 
     train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,num_workers=4,pin_memory=True)
     val_loader = DataLoader(val_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
-    test_loader = DataLoader(val_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
+    test_loader = DataLoader(test_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
 
-    
     # Legt den Pfad zum Ordner für die Vorhersagen fest.
     out_dir = os.path.join('prediction')
     # Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
@@ -101,7 +105,7 @@ def train(
         print('****************************')
 
         # Schleife über alle Trainings-Batches.
-        for image, gt_mask in train_dataloader:
+        for image, gt_mask in train_loader:
             image = image.to(device)  # Verschiebt die Eingabebilder auf das Device.
             # Verschiebt die Ground-Truth-Masken auf das Device.
             gt_mask = gt_mask.to(device)
@@ -138,7 +142,7 @@ def train(
             # Startet einen Kontext ohne Gradientenberechnung (spart Speicher/Zeit).
             with torch.no_grad():
                 # Schleife über alle Testbilder im DataLoader.
-                for i, (image, _) in enumerate(test_dataloader):
+                for i, (image, _) in enumerate(test_loader):
                     # Verschiebt das Testbild auf das Device.
                     image = image.to(device)
                     # Berechnet die Vorhersage des Modells für das Testbild.
