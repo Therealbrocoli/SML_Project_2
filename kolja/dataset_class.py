@@ -1,18 +1,13 @@
-"""ETH Mugs Dataset."""  
-import os  
-from PIL import Image  # Importiert PIL, um Bilder zu öffnen und zu bearbeiten.
-import torch  # Importiert PyTorch, das Framework für Deep Learning.
+import os
 import random
+from PIL import Image
+import torch
+from torch.utils.data import Dataset
+from torchvision import transforms, transforms as T
+import torchvision.transforms.functional as F
 
-from torch.utils.data import Dataset  # Importiert die Dataset-Basisklasse für eigene Datensätze.
-from torchvision import transforms  # Importiert Bildtransformationen und Augmentationen.
+from utils import IMAGE_SIZE  #(W, H)
 
-from utils import * #Importiert eine Bildgrößen-Konstante und eine Funktion (hier nicht genutzt).
-
-"""
-root_dir = "dataset/train_data"
-root_dir = "dataset/test_data"
-"""
 
 class ETHMugsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
@@ -24,34 +19,15 @@ class ETHMugsDataset(Dataset):
         if self.mode == "train":
             self.rgb_dir = os.path.join(self.root_dir, "rgb")
             self.mask_dir = os.path.join(self.root_dir, "masks")
-            self.mean, self.std = [0.427, 0.419, 0.377],[0.234, 0.225, 0.236] # = mean_std()
+            self.mean, self.std = [0.427, 0.419, 0.377],[0.234, 0.225, 0.236]
             self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
 
-            self.transform1 = transforms.Compose([
+            self.transform = transforms.Compose([
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomAdjustSharpness(sharpness_factor=2.0, p=0.5),
                 transforms.Resize(IMAGE_SIZE),
                 transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
                 transforms.Normalize(self.mean, self.std), # Normalisiert die Bildkanäle.
-            ])
-            self.transform2 = transforms.Compose([
-                transforms.RandomRotation(30),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.02),      # Zufällige Drehung (max ±10 Grad).
-                transforms.Resize(IMAGE_SIZE),      
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean, self.std),
-            ])
-            self.transform3 = transforms.Compose([
-                transforms.ColorJitter(contrast=0.5, saturation=0.5, hue=0.1),
-                transforms.Resize(IMAGE_SIZE),
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean, self.std),
-            ])
-            self.transform4 = transforms.Compose([
-                transforms.RandomSolarize(threshold=128, p=0.3),
-                transforms.Resize(IMAGE_SIZE),
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean, self.std),
             ])
 
         if self.mode == "test":
@@ -75,20 +51,16 @@ class ETHMugsDataset(Dataset):
         image = Image.open(IMG_NAME).convert('RGB')  # Öffnet das Bild als RGB.
 
         if self.mode == "train":  # Nur im Training werden echte Masken geladen.
-            
+
             img_base_name = os.path.splitext(self.image_paths[idx])[0].split('_rgb')[0]  # Extrahiert den Basisnamen ohne Suffix und Extension.
+
             MASK_NAME = os.path.join(self.mask_dir, f"{img_base_name}_mask.png")  # Sucht zugehörigen Maskenpfad.
+
             if not os.path.exists(MASK_NAME):  # Prüft, ob die Maske existiert.
                 raise FileNotFoundError(f"The mask file {MASK_NAME} does not exist.")  # Fehler, falls Maske fehlt.
             mask = Image.open(MASK_NAME).convert('L')  # Öffnet die Maske als Graustufenbild.
 
-            image1, mask1 = self.transform1(image, mask)
-            image2, mask2 = self.transform2(image, mask)
-            image3, mask3 = self.transform3(image, mask)
-            image4, mask4 = self.transform4(image, mask)
-
-            image= torch.cat([image, image1, image2, image3, image4])
-            mask = torch.cat([mask, mask1, mask2, mask3, mask4])
+            image = self.transform(image)
 
         elif self.mode == "val":
             mask = Image.open(MASK_NAME).convert('L')  # Öffnet die Maske als Graustufenbild.

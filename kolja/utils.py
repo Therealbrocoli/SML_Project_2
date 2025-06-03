@@ -146,6 +146,3 @@ def save_predictions(image_ids, pred_masks, save_path='submission.csv'):
         predictions['EncodedPixels'].append(f'{mask_rle}')
 
     pd.DataFrame(predictions).to_csv(save_path, index=False)
-
-print(mean_std())
-
