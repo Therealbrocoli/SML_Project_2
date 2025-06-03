@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+from utils import *
 #externalisierte Funktion aus train_DeepLab.py 
 
 class DeepLab(nn.Module):

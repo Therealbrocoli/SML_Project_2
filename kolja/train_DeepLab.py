@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from dataset_preprocessing import ETHMugsDataset, ETHMugspred
+from kolja.class import ETHMugsDataset, ETHMugspred
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from kolja.DeepLab import DeepLab
 

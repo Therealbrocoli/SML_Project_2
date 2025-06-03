@@ -3,21 +3,31 @@
 import numpy as np
 import pandas as pd
 import time
+import random
 import os
 import torch
 from torchvision import transforms
 from PIL import Image
 
 IMAGE_SIZE = (252, 378)
+seed = 42
+random.seed(seed)            # Python-random
+np.random.seed(seed)         # NumPy-random
+torch.manual_seed(seed)      # PyTorch CPU-RNG
+torch.cuda.manual_seed_all(seed)  # PyTorch CUDA-RNG (falls GPU verwendet)
 
 def mean_std():
+    # === ANSI ==
+    BOLD = "\033[1m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
     t0 = time.perf_counter()
     # === PARAMETER ===
     print(f"[INFO]: start mean_std calculations for augmentation")
     t = time.perf_counter()
     rgb_folder = "datasets/train_data/rgb"
     IMAGE_SIZE = (252, 378)
-    print(f"[TIME]: mean_std: variable defintion {time.per_counter()-t:.3f}s")
+    print(f"[TIME]: mean_std: variable defintion {time.perf_counter()-t:.3f}s")
 
     # 1. Transform für Statistik: Resize → ToTensor (skaliert [0,255] → [0,1])
     t = time.perf_counter()
@@ -25,18 +35,19 @@ def mean_std():
         transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor(),  # ergibt Tensor mit shape (3, H, W), Werte ∈ [0,1]
     ])
-    print(f"[TIME]: mean_std: transformation for calculation {time.per_counter()-t:.3f}s")
+    print(f"[TIME]: mean_std: transformation for calculation {time.perf_counter()-t:.3f}s")
 
     # 2. Arrays für Summen und Quadratsummen initialisieren
     t = time.perf_counter()
     sum_channels    = torch.zeros(3)
     sum_sq_channels = torch.zeros(3)
     total_pixels    = 0
-    print(f"[TIME]: mean_std: Arrays für Summen und Quadratsummen initialisieren {time.per_counter()-t:.3f}s")
+    print(f"[TIME]: mean_std: Arrays für Summen und Quadratsummen initialisieren {time.perf_counter()-t:.3f}s")
 
     # 3. Über alle Bilder iterieren und Statistiken aufsammeln
     t = time.perf_counter()
-    for fname in os.listdir(rgb_folder):
+    for fname in sorted(os.listdir(rgb_folder)):
+        print(f"{GREEN}[INFO]: BILD {fname}{RESET}")
         if not fname.lower().endswith(".jpg"):
             continue
 
@@ -53,24 +64,26 @@ def mean_std():
         # tensor.sum(dim=(1,2)) ist ein 3-Tupel: [Summe_R, Summe_G, Summe_B]
         sum_channels    += tensor.sum(dim=(1, 2))
         sum_sq_channels += (tensor ** 2).sum(dim=(1, 2))
-    print(f"[TIME]: mean_std: über alle Bilder iteriert {time.per_counter()-t:.3f}s")
+    print(f"[TIME]: mean_std: über alle Bilder iteriert {time.perf_counter()-t:.3f}s")
 
     # 4. Mittelwert und Standardabweichung berechnen
     t = time.perf_counter()
     mu    = sum_channels    / total_pixels                  # Tensor der Länge 3
     var   = (sum_sq_channels / total_pixels) - (mu ** 2)    # Kanal-Varianz
     sigma = torch.sqrt(var)                                 # Kanal-StdDev
-    print(f"[TIME]: mean_std: mean und std fertig berechnet in torch format{time.per_counter()-t:.3f}s")
+    print(f"[TIME]: mean_std: mean und std fertig berechnet in torch format{time.perf_counter()-t:.3f}s")
 
     # 5. In Python-Listen für Normalize umwandeln
     t = time.perf_counter()
     mean_values = mu.tolist()       # z.B. [0.48, 0.43, 0.39]
+    mean_values = [round(x, 3) for x in mean_values]
     std_values  = sigma.tolist()    # z.B. [0.24, 0.25, 0.23]
-    print(f"[TIME]: mean_std: ready für die Class ETHMugsDataset transformiert {time.per_counter()-t:.3f}s")
+    std_values = [round(x, 3) for x in std_values]
+    print(f"[TIME]: mean_std: ready für die Class ETHMugsDataset transformiert {time.perf_counter()-t:.3f}s")
 
-    print("Berechnetes mean:", mean_values)
-    print("Berechnete std: ", std_values)
-    print(f"[TIME]: mean_std: calculation dauer{time.per_counter()-t:.3f}s")
+    print("[INFO]:Berechneter mean:", mean_values)
+    print("[INFO]:Berechnete std: ", std_values)
+    print(f"{BOLD}{GREEN}[TIME]: mean_std: TOTAL calculation Dauer {time.perf_counter()-t0:.3f}{RESET}s")
 
 
     return mean_values, std_values
