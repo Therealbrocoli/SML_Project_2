@@ -1,12 +1,14 @@
 """Code for training a model on the ETHMugs dataset."""# which is a mask
 import argparse
 import os
+import random
+import numpy as np
 from datetime import datetime
 import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from eth_mugs_dataset import ETHMugsDataset
+from dataset_preprocessing import ETHMugsDataset, ETHMugspred
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from kolja.DeepLab import DeepLab
 
@@ -22,7 +24,10 @@ def train(
     train_data_root: str,
     val_data_root: str,
 
-):
+):  
+    #seeds für das Training
+    torch.manual_seed(42)
+    random.seed(42)
     # Legt fest, wie oft während des Trainings Logs ausgegeben werden.
     log_frequency = 10
     # Setzt die Batchgröße für die Validierung auf 1.
@@ -56,8 +61,20 @@ def train(
     ])
 
 
-    full_dataset = ETHMugsDataset(root_dir="datasets/train_data", mode="train")
-    
+### Alle Datasets laden
+    full_dataset = ETHMugsDataset(root_dir="datasets/train_data", mode="train")  # Erstelle das vollständige Dataset-Objekt für den Trainingsmodus
+    #train_val split
+    total_len = len(full_dataset)  # Bestimme die Gesamtanzahl der Proben im Dataset
+    train_len = int(0.8 * total_len)  # Berechne die Anzahl der Trainingsproben (80 % des Gesamtbestands)
+    val_len = total_len - train_len  # Berechne die Anzahl der Validierungsproben (restliche 20 %)
+    batch_size = 32  # Definiere die Batch-Größe für den DataLoader
+
+    train_dataset, val_dataset = random_split(full_dataset, [train_len, val_len])  # Teile das Dataset zufällig in Trainings- und Validierungs-Subset auf
+    test_dataset= ETHMugspred(oot_dir="datasets/test_data", mode = "test")
+
+    train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,num_workers=4,pin_memory=True)
+    val_loader = DataLoader(val_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
+    test_loader = DataLoader(test_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
 
     # Legt den Pfad zum Ordner für die Vorhersagen fest.
     out_dir = os.path.join('prediction')
@@ -88,7 +105,7 @@ def train(
         print('****************************')
 
         # Schleife über alle Trainings-Batches.
-        for image, gt_mask in train_dataloader:
+        for image, gt_mask in train_loader:
             image = image.to(device)  # Verschiebt die Eingabebilder auf das Device.
             gt_mask = gt_mask.to(device)  # Verschiebt die Ground-Truth-Masken auf das Device.
             
@@ -119,12 +136,35 @@ def train(
     image_ids = [] #Initialisiert eine Liste für Bild-IDs.
     pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
 
+<<<<<<< HEAD
     with torch.no_grad():
         # Schleife über alle Testbilder im DataLoader.
         for i, (image, _) in enumerate(test_dataloader):
             image = image.to(device)
             test_output = model(image)
             test_output = torch.nn.Sigmoid()(test_output) #binaere Segmentierung in ETH Tasse und Hintergrund 
+=======
+            # Startet einen Kontext ohne Gradientenberechnung (spart Speicher/Zeit).
+            with torch.no_grad():
+                # Schleife über alle Testbilder im DataLoader.
+                for i, (image, _) in enumerate(test_loader):
+                    # Verschiebt das Testbild auf das Device.
+                    image = image.to(device)
+                    # Berechnet die Vorhersage des Modells für das Testbild.
+                    test_output = model(image)
+                    # Wendet eine Sigmoid-Funktion auf die Modellvorhersage an (für binäre Segmentierung).
+                    test_output = torch.nn.Sigmoid()(test_output)
+                    # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
+                    pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
+                    # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
+                    pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
+                    # Speichert die Maske als PNG im Ausgabeverzeichnis.
+                    pred_mask_image.save(os.path.join(out_dir, f"{str(i).zfill(4)}_mask.png"))
+                    # Fügt die Bild-ID zur Liste hinzu.
+                    image_ids.append(str(i).zfill(4))
+                    # Fügt die Vorhersagemaske zur Liste hinzu.
+                    pred_masks.append(pred_mask)
+>>>>>>> 6bf54dd44695f14aebf7d890bc09ca8eb894f401
 
             # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
             pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
