@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from eth_mugs_dataset import ETHMugsDataset
+from dataset_preprocessing import ETHMugsDataset, ETHMugspred
 from utils import IMAGE_SIZE, compute_iou, save_predictions
 from kolja.DeepLab import DeepLab
 
@@ -56,9 +56,22 @@ def train(
     ])
 
 
-    full_dataset = ETHMugsDataset(root_dir="datasets/train_data", mode="train")
-    
+### Alle Datasets laden
+    full_dataset = ETHMugsDataset(root_dir="datasets/train_data", mode="train")  # Erstelle das vollständige Dataset-Objekt für den Trainingsmodus
+    #train_val split
+    total_len = len(full_dataset)  # Bestimme die Gesamtanzahl der Proben im Dataset
+    train_len = int(0.8 * total_len)  # Berechne die Anzahl der Trainingsproben (80 % des Gesamtbestands)
+    val_len = total_len - train_len  # Berechne die Anzahl der Validierungsproben (restliche 20 %)
+    batch_size = 32  # Definiere die Batch-Größe für den DataLoader
 
+    train_dataset, val_dataset = random_split(full_dataset, [train_len, val_len])  # Teile das Dataset zufällig in Trainings- und Validierungs-Subset auf
+    test_dataset= ETHMugspred(oot_dir="datasets/test_data", mode = "test")
+
+    train_loader = DataLoader(train_dataset,batch_size=batch_size,shuffle=True,num_workers=4,pin_memory=True)
+    val_loader = DataLoader(val_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
+    test_loader = DataLoader(val_dataset,batch_size=batch_size,shuffle=False,num_workers=4,pin_memory=True)
+
+    
     # Legt den Pfad zum Ordner für die Vorhersagen fest.
     out_dir = os.path.join('prediction')
     # Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
