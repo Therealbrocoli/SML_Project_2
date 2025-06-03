@@ -35,7 +35,7 @@ class DeepLab(nn.Module):
         # Interpoliere auf die ursprüngliche Bildgröße
         x = F.interpolate(x, size=(252, 376), mode='bilinear', align_corners=False)
 
-        return torch.sigmoid(x)# ETH Tasse (1) oder Hintergrund (0)
+        return x # sigmoid wird in train gemacht ETH Tasse (1) oder Hintergrund (0)
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(ASPP, self).__init__()

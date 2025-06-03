@@ -1,0 +1,17 @@
+hyperparameters:
+  num_epochs: 10
+  learning_rate: 1e-4
+  train_batch_size: 8
+  val_batch_size: 1
+  val_frequency: 1
+  log_frequency: 10
+  batch_size: 32
+  gamma: 0.1
+  step_size: 10
+  patience: 5
+  factor: 0.1
+
+paths:
+  data_root: "./datasets"
+  ckpt_dir: "./checkpoints"
+  out_dir: "prediction"
