@@ -36,7 +36,7 @@ class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mu
 
         print("[INFO] Dataset mode:", mode)  # Gibt aus, welcher Mode genutzt wird (train/test).
         print("[INFO] Number of images in the ETHMugDataset:", len(self.image_paths))  # Gibt die Anzahl der Bilder im Datensatz aus.
-        
+
     def __len__(self):  # Ermöglicht len(dataset); gibt die Anzahl der Bilder zurück.
         return len(self.image_paths)  # Gibt die Länge der Bildliste zurück.
 
@@ -58,3 +58,5 @@ class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mu
             image = self.transform(image)  # Transformiert das Bild.
 
         return image, mask  # Gibt Bild und Maske (beides als Tensor) zurück.
+
+class ETHMugspred(Dataset):
