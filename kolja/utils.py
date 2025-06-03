@@ -116,7 +116,7 @@ def mask_to_rle(mask):
     return ' '.join(str(x) for x in runs)
 
 
-def compute_iou(pred_mask, gt_mask, threshold=0.5):
+def compute_iou(pred_mask, gt_mask, threshold=0.5): 
     # Ensure the masks are in the correct format
     pred_mask = pred_mask > threshold
     gt_mask = gt_mask > threshold
