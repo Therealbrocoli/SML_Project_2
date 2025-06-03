@@ -29,7 +29,7 @@ class ETHMugsDataset(Dataset):
                 transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
                 transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
                 transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
+                transforms.Normalize(ist aber mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
             ])
             self.transform1 = transforms.Compose([
                 transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
