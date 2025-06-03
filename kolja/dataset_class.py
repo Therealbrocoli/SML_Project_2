@@ -70,8 +70,8 @@ class ETHMugsDataset(Dataset):
         return len(self.image_paths)  # Gibt die Länge der Bildliste zurück.
 
     def __getitem__(self, idx: int):  # Holt das Bild + Maske zum gegebenen Index (dataset[idx]).
-        img_name = os.path.join(self.rgb_dir, self.image_paths[idx])  # Baut Pfad zum Bild auf.
-        image = Image.open(img_name).convert('RGB')  # Öffnet das Bild als RGB.
+        IMG_NAME = os.path.join(self.rgb_dir, self.image_paths[idx])  # Baut Pfad zum Bild auf.
+        image = Image.open(IMG_NAME).convert('RGB')  # Öffnet das Bild als RGB.
 
         if self.mode == "train":  # Nur im Training werden echte Masken geladen.
             img_base_name = os.path.splitext(self.image_paths[idx])[0].split('_rgb')[0]  # Extrahiert den Basisnamen ohne Suffix und Extension.
