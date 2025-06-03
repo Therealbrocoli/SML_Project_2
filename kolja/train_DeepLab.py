@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from dataset_class import ETHMugsDataset, ETHMugspred
+from dataset_class import ETHMugsDataset
 from utils import *
 from DeepLab import DeepLab
 

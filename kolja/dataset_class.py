@@ -14,12 +14,13 @@ class ETHMugsDataset(Dataset):
         # 1. Standards werden definiert im Dataset
         self.mode = mode
         self.root_dir = root_dir
+        self.mean = [0.427, 0.419, 0.377]
+        self.std = [0.234, 0.225, 0.236]
 
         # 2. Was wird gemacht wenn man von "train" data redet.
         if self.mode == "train":
             self.rgb_dir = os.path.join(self.root_dir, "rgb")
             self.mask_dir = os.path.join(self.root_dir, "masks")
-            self.mean, self.std = [0.427, 0.419, 0.377],[0.234, 0.225, 0.236]
             self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
 
             self.transform = transforms.Compose([
