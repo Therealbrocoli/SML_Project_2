@@ -3,7 +3,7 @@ import argparse
 import os
 from datetime import datetime
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
 from eth_mugs_dataset import ETHMugsDataset
@@ -54,16 +54,10 @@ def train(
         transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor(),
     ])
-### Dataset and DataLoader
-    # Erstellt ein Trainings-Dataset-Objekt mit den Trainingsdaten.
-    train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
-    # Erzeugt einen DataLoader für das Training mit definierter Batchgröße und zufälliger Durchmischung.
-    train_dataloader = DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)
 
-    # Erstellt ein Test-Dataset-Objekt für die Validierung.
-    test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="val")
-    # Erstellt einen DataLoader für die Validierung ohne Shuffle.
-    test_dataloader = DataLoader(test_dataset, batch_size=val_batch_size, shuffle=False)
+
+    full_dataset = ETHMugsDataset(root_dir="datasets/train_data", mode="train")
+    
 
     # Legt den Pfad zum Ordner für die Vorhersagen fest.
     out_dir = os.path.join('prediction')
