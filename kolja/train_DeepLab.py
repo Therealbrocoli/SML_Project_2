@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from kolja.dataset_class import ETHMugsDataset, ETHMugspred
+from dataset_class import ETHMugsDataset, ETHMugspred
 from utils import *
-from kolja.DeepLab import DeepLab
+from DeepLab import DeepLab
 
 def load_config(config_path):
     """Lädt die Konfiguration aus einer YAML-Datei."""
