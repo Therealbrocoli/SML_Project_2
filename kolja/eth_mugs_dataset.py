@@ -1,5 +1,5 @@
-"""ETH Mugs Dataset."""  # Modulbeschreibung, was der Code macht.
-import os  # Importiert das Modul für Betriebssystem- und Pfad-Operationen.
+"""ETH Mugs Dataset."""  
+import os  
 from PIL import Image  # Importiert PIL, um Bilder zu öffnen und zu bearbeiten.
 import torch  # Importiert PyTorch, das Framework für Deep Learning.
 
@@ -36,7 +36,7 @@ class ETHMugsDataset(Dataset):  # Definiert eine neue Dataset-Klasse für ETH Mu
 
         print("[INFO] Dataset mode:", mode)  # Gibt aus, welcher Mode genutzt wird (train/test).
         print("[INFO] Number of images in the ETHMugDataset:", len(self.image_paths))  # Gibt die Anzahl der Bilder im Datensatz aus.
-
+###
     def __len__(self):  # Ermöglicht len(dataset); gibt die Anzahl der Bilder zurück.
         return len(self.image_paths)  # Gibt die Länge der Bildliste zurück.
 

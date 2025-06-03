@@ -6,8 +6,8 @@ from datetime import datetime
 
 import torch
 
-from eth_mugs_dataset import ETHMugsDataset
-from utils import IMAGE_SIZE, compute_iou
+from eth_mugs_dataset import ETHMugsDataset #importiert die Classe
+from utils import IMAGE_SIZE, compute_iou #iou = performance assesement 
 
 
 def build_model():  # TODO: Add your model definition here
@@ -17,7 +17,7 @@ def build_model():  # TODO: Add your model definition here
 def train(
     ckpt_dir: str,
     train_data_root: str,
-    val_data_root: str,
+    val_data_root: str, 
 ):
     """Train function."""
     # Logging and validation settings
@@ -52,7 +52,7 @@ def train(
     # model = build_model(...)
     # model.to(device)
 
-    # TODO: Define Loss function
+    # TODO: Define Loss function IaoU
     # criterion = ...
 
     # TODO: Define Optimizer
@@ -107,7 +107,8 @@ def train(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SML Project 2.")
+    #Parser: Programm, das eine syntaktische Analyse durchfuehrt 
+    parser = argparse.ArgumentParser(description="SML Project 2.")#interpretiert Kommandozeilen-Eintraege und dokumentiert Prozess
     parser.add_argument(
         "-d",
         "--data_root",
@@ -135,4 +136,4 @@ if __name__ == "__main__":
     val_data_root = os.path.join(args.data_root, "my_validation_data")
     print(f"[INFO]: Validation data root: {val_data_root}")
 
-    train(ckpt_dir, train_data_root, val_data_root)
+    train(ckpt_dir, train_data_root, val_data_root) #ruft train Funktion, die tatsaechliche Berechnungen durchfuehrt 
