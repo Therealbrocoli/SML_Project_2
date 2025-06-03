@@ -1,4 +1,4 @@
-"""Code for training a model on the ETHMugs dataset."""
+"""Code for training a model on the ETHMugs dataset."""# which is a mask
 import argparse
 import os
 from datetime import datetime
@@ -8,14 +8,13 @@ from torchvision import transforms
 from PIL import Image
 from eth_mugs_dataset import ETHMugsDataset
 from utils import IMAGE_SIZE, compute_iou, save_predictions
-from model import FCN
+from kolja.DeepLab import DeepLab
 
 # Definiert eine Funktion, die das Modell erzeugt.
 def build_model():
     # Beschreibt in einem Docstring, dass hier das Modell gebaut wird.
     """Build the model."""
-    # Gibt ein FCN-Modell zurück, das 3 Eingangskanäle (RGB) und 1 Ausgangskanal (Maske) besitzt.
-    return FCN(in_channels=3, out_channels=1)
+    return DeepLab()
 
 # Definiert die Trainingsfunktion mit Speicherorten für Checkpoints und Daten als Argumente.
 def train(
@@ -31,12 +30,13 @@ def train(
     # Gibt an, nach wie vielen Epochen eine Validierung durchgeführt wird.
     val_frequency = 1
 
-    # Anzahl der Trainingsepochen wird auf 10 gesetzt.
+### Hyperparamter 
     num_epochs = 10
     # Lernrate für den Optimierer.
     lr = 1e-4
     # Batchgröße fürs Training.
     train_batch_size = 8
+    # val_batch_size =1 
 
     # Gibt die gewählte Anzahl Epochen aus.
     print(f"[INFO]: Number of training epochs: {num_epochs}")
@@ -46,14 +46,7 @@ def train(
     print(f"[INFO]: Training batch size: {train_batch_size}")
 
     # Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
-    if torch.cuda.is_available():
-         device = torch.device("cuda")
-    elif torch.xpu.is_available():
-        device = torch.device("xpu")
-    else:
-        device = torch.device("cpu")
-
-    # Gibt das verwendete Device (CPU/GPU) aus.
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print(f"[INFO]: Using device: {device}")
 
     # Definiert eine Bildtransformation (Resize und ToTensor) als Pipeline.
@@ -61,7 +54,7 @@ def train(
         transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor(),
     ])
-
+### Dataset and DataLoader
     # Erstellt ein Trainings-Dataset-Objekt mit den Trainingsdaten.
     train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
     # Erzeugt einen DataLoader für das Training mit definierter Batchgröße und zufälliger Durchmischung.
@@ -79,38 +72,30 @@ def train(
     # Gibt aus, wohin die Masken gespeichert werden.
     print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
 
-    # Baut das Modell mit der zuvor definierten Funktion.
+### Model 
     model = build_model()
-    # Verschiebt das Modell auf das gewählte Device (CPU oder GPU).
-    model.to(device)
+    model.to(device) #GPU oder CPU
 
-    # Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
+### defiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
     criterion = torch.nn.BCELoss()
-    # Initialisiert den Adam-Optimizer mit Lernrate.
+### itialisiert den Adam-Optimizer mit Lernrate.
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    # Erstellt einen Scheduler, der die Lernrate alle 10 Epochen um den Faktor 0.1 reduziert.
+### erstellt Scheduler, der die Lernrate alle 10 Epochen um den Faktor 0.1 reduziert.
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-    # Gibt erneut das verwendete Device aus (redundant).
-    print(f"[INFO]: Using device: {device}")
-    # Gibt aus, dass das Training startet.
-    print("[INFO]: Starting training...")
 
-    # Schleife über alle Trainingsepochen.
+### Schleife über alle Trainingsepochen.
+    print("[INFO]: Starting training...")
     for epoch in range(num_epochs):
-        # Setzt das Modell in den Trainingsmodus.
-        model.train()
-        # Druckt Trenner für die Übersichtlichkeit.
-        print('****************************')
-        # Gibt die aktuelle Epoche aus.
+        model.train()# Setzt das Modell in den Trainingsmodus
+        
+        print('****************************') # Druckt Trenner für die Übersichtlichkeit.
         print(epoch)
-        # Druckt noch einen Trenner.
         print('****************************')
 
         # Schleife über alle Trainings-Batches.
         for image, gt_mask in train_dataloader:
-            # Verschiebt die Eingabebilder auf das Device.
-            image = image.to(device)
+            image = image.to(device)  # Verschiebt die Eingabebilder auf das Device.
             # Verschiebt die Ground-Truth-Masken auf das Device.
             gt_mask = gt_mask.to(device)
             # Setzt die Gradienten im Optimierer auf Null zurück.
@@ -168,7 +153,7 @@ def train(
                 save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(out_dir, 'submission.csv'))
                 print(f"[INFO]: Predictions saved to {os.path.join(out_dir, 'submission.csv')}")
 
-# Prüft, ob das Skript direkt ausgeführt wird.
+
 if __name__ == "__main__":
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
     parser = argparse.ArgumentParser(description="SML Project 2.")
@@ -207,5 +192,5 @@ if __name__ == "__main__":
     val_data_root = os.path.join(args.data_root, "test_data")
     # Gibt den Validierungsdaten-Ordner aus.
     print(f"[INFO]: Test data root: {val_data_root}")
-    # Startet das Training mit den definierten Pfaden.
-    train(ckpt_dir, train_data_root, val_data_root)
+
+    train(ckpt_dir, train_data_root, val_data_root) # Startet das Training mit den definierten Pfaden.
