@@ -2,48 +2,43 @@
 import os  
 from PIL import Image  # Importiert PIL, um Bilder zu öffnen und zu bearbeiten.
 import torch  # Importiert PyTorch, das Framework für Deep Learning.
+import random
 
 from torch.utils.data import Dataset  # Importiert die Dataset-Basisklasse für eigene Datensätze.
 from torchvision import transforms  # Importiert Bildtransformationen und Augmentationen.
 
-from utils import IMAGE_SIZE, load_mask  # Importiert eine Bildgrößen-Konstante und eine Funktion (hier nicht genutzt).
+from utils import * #Importiert eine Bildgrößen-Konstante und eine Funktion (hier nicht genutzt).
+
+"""
+root_dir = "dataset/train_data"
+root_dir = "dataset/test_data"
+"""
+
 
 class ETHMugsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
+        # 1. Standards werden definiert im Dataset
         self.mode = mode
         self.root_dir = root_dir
-        self.rgb_dir = os.path.join(self.root_dir, "rgb")
-        self.mask_dir = os.path.join(self.root_dir, "masks")
 
-        self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
-
+        # 2. Was wird gemacht wenn man von "train" data redet.
         if self.mode == "train":
+            self.rgb_dir = os.path.join(self.root_dir, "rgb")
+            self.mask_dir = os.path.join(self.root_dir, "masks")
+            self.mean, self.std = [0.427, 0.419, 0.377],[0.234, 0.225, 0.236] # = mean_std()
+            self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
+
             self.transform1 = transforms.Compose([
                 transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
                 transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
                 transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
+                transforms.Normalize(self.mean, self.std),  # Normalisiert die Bildkanäle.
             ])
-            self.transform1 = transforms.Compose([
-                transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
+            self.transform2 = transforms.Compose([
                 transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
                 transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
                 transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
-            ])
-            self.transform1 = transforms.Compose([
-                transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
-                transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
-                transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
-                transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
-            ])
-            self.transform1 = transforms.Compose([
-                transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
-                transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
-                transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
-                transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # Normalisiert die Bildkanäle.
+                transforms.Normalize(self.mean, self.std),  # Normalisiert die Bildkanäle.
             ])
 
 
