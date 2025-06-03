@@ -57,12 +57,6 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print(f"[INFO]: Using device: {device}")
 
-    # Definiert eine Bildtransformation (Resize und ToTensor) als Pipeline.
-    transform = transforms.Compose([
-        transforms.Resize(IMAGE_SIZE),
-        transforms.ToTensor(),
-    ])
-
     # Lade das vollständige Trainingsdataset
     full_train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
 
@@ -89,9 +83,8 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     """
 
     # Lade Testdaten
-    test_dataset = ETHMugspred(root_dir=val_data_root, mode="test")
+    test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="test")
     test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
-
 
     # Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
     os.makedirs(config['paths']['out_dir'], exist_ok=True)
