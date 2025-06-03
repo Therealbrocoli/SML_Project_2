@@ -83,11 +83,17 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
     full_train_dataset.mode = "train"
 
+    """
+    for images_batch, masks_batch in train_loader:
+    B, V, C, H, W = images_batch.shape
+    images_flat = images_batch.view(B * V, C, H, W)
+    masks_flat  = masks_batch.view (B * V, 1, H, W)
+    """
+
     # Lade Testdaten
     test_dataset = ETHMugspred(root_dir=val_data_root, mode="test")
     test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
 
-   
 
     # Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
     os.makedirs(config['paths']['out_dir'], exist_ok=True)
