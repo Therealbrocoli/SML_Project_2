@@ -14,7 +14,6 @@ root_dir = "dataset/train_data"
 root_dir = "dataset/test_data"
 """
 
-
 class ETHMugsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
         # 1. Standards werden definiert im Dataset
@@ -29,19 +28,40 @@ class ETHMugsDataset(Dataset):
             self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
 
             self.transform1 = transforms.Compose([
-                transforms.RandomHorizontalFlip(),  # Zufälliges Spiegeln zur Augmentation.
-                transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomAdjustSharpness(sharpness_factor=2.0, p=0.5),
+                transforms.Resize(IMAGE_SIZE),
                 transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(self.mean, self.std),  # Normalisiert die Bildkanäle.
+                transforms.Normalize(self.mean, self.std), # Normalisiert die Bildkanäle.
             ])
             self.transform2 = transforms.Compose([
-                transforms.RandomRotation(10),      # Zufällige Drehung (max ±10 Grad).
-                transforms.Resize(IMAGE_SIZE),      # Skaliert das Bild auf die gewünschte Zielgröße.
-                transforms.ToTensor(),              # Wandelt das PIL-Image in einen PyTorch-Tensor um.
-                transforms.Normalize(self.mean, self.std),  # Normalisiert die Bildkanäle.
+                transforms.RandomRotation(30),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.02),      # Zufällige Drehung (max ±10 Grad).
+                transforms.Resize(IMAGE_SIZE),      
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std),
+            ])
+            self.transform3 = transforms.Compose([
+                transforms.ColorJitter(contrast=0.5, saturation=0.5, hue=0.1),
+                transforms.Resize(IMAGE_SIZE),
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std),
+            ])
+            self.transform4 = transforms.Compose([
+                transforms.RandomSolarize(threshold=128, p=0.3),
+                transforms.Resize(IMAGE_SIZE),
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std),
             ])
 
-
+        if self.mode == "test":
+            self.rgb_dir = os.path.join(self.root_dir, "rgb")
+            self.image_paths = [f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")]
+            self.transform = transforms.Compose([
+                transforms.Resize(IMAGE_SIZE),
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std),
+            ])
 
         print("[INFO] Dataset mode:", mode)  # Gibt aus, welcher Mode genutzt wird (train/test).
         print("[INFO] Number of images in the ETHMugDataset:", len(self.image_paths))  # Gibt die Anzahl der Bilder im Datensatz aus.
@@ -67,5 +87,3 @@ class ETHMugsDataset(Dataset):
             image = self.transform(image)  # Transformiert das Bild.
 
         return image, mask  # Gibt Bild und Maske (beides als Tensor) zurück.
-
-class ETHMugspred(Dataset):
