@@ -73,11 +73,19 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     # Erstelle DataLoader für Trainings- und Validierungsdaten
     train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
+    full_train_dataset.mode = "val"
     val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    full_train_dataset.mode = "train"
 
     # Lade Testdaten
     test_dataset = ETHMugspred(root_dir=val_data_root, mode="test")
     test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+
+    # Traindata Augmentation
+    #====================================================================================
+
+
+    #====================================================================================
 
     # Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
     os.makedirs(config['paths']['out_dir'], exist_ok=True)

@@ -75,12 +75,23 @@ class ETHMugsDataset(Dataset):
         image = Image.open(IMG_NAME).convert('RGB')  # Öffnet das Bild als RGB.
 
         if self.mode == "train":  # Nur im Training werden echte Masken geladen.
+            
             img_base_name = os.path.splitext(self.image_paths[idx])[0].split('_rgb')[0]  # Extrahiert den Basisnamen ohne Suffix und Extension.
             MASK_NAME = os.path.join(self.mask_dir, f"{img_base_name}_mask.png")  # Sucht zugehörigen Maskenpfad.
             if not os.path.exists(MASK_NAME):  # Prüft, ob die Maske existiert.
                 raise FileNotFoundError(f"The mask file {MASK_NAME} does not exist.")  # Fehler, falls Maske fehlt.
             mask = Image.open(MASK_NAME).convert('L')  # Öffnet die Maske als Graustufenbild.
 
+            image1, mask1 = self.transform1(image, mask)
+            image2, mask2 = self.transform2(image, mask)
+            image3, mask3 = self.transform3(image, mask)
+            image4, mask4 = self.transform4(image, mask)
+
+            image= torch.cat([image, image1, image2, image3, image4])
+            mask = torch.cat([mask, mask1, mask2, mask3, mask4])
+
+        elif self.mode == "val":
+            mask = Image.open(MASK_NAME).convert('L')  # Öffnet die Maske als Graustufenbild.
         else:
             mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Gibt Dummy-Maske zurück, falls nicht train.
 
