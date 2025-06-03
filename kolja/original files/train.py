@@ -52,7 +52,7 @@ def train(
     # model = build_model(...)
     # model.to(device)
 
-    # TODO: Define Loss function IaoU
+    # TODO: Define Loss function IoU
     # criterion = ...
 
     # TODO: Define Optimizer
