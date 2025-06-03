@@ -69,21 +69,19 @@ class ETHMugsDataset(Dataset):
     def __len__(self):  # Ermöglicht len(dataset); gibt die Anzahl der Bilder zurück.
         return len(self.image_paths)  # Gibt die Länge der Bildliste zurück.
 
-    def __getitem__(self, idx: int):  # Holt das Bild + Maske zum gegebenen Index (dataset[idx]).
+    def __getitem__(self, idx: int):
+
         IMG_NAME = os.path.join(self.rgb_dir, self.image_paths[idx])  # Baut Pfad zum Bild auf.
         image = Image.open(IMG_NAME).convert('RGB')  # Öffnet das Bild als RGB.
 
         if self.mode == "train":  # Nur im Training werden echte Masken geladen.
             img_base_name = os.path.splitext(self.image_paths[idx])[0].split('_rgb')[0]  # Extrahiert den Basisnamen ohne Suffix und Extension.
-            mask_name = os.path.join(self.mask_dir, f"{img_base_name}_mask.png")  # Sucht zugehörigen Maskenpfad.
-            if not os.path.exists(mask_name):  # Prüft, ob die Maske existiert.
-                raise FileNotFoundError(f"The mask file {mask_name} does not exist.")  # Fehler, falls Maske fehlt.
-            mask = Image.open(mask_name).convert('L')  # Öffnet die Maske als Graustufenbild.
-            mask = self.mask_transform(mask)  # Transformiert die Maske.
+            MASK_NAME = os.path.join(self.mask_dir, f"{img_base_name}_mask.png")  # Sucht zugehörigen Maskenpfad.
+            if not os.path.exists(MASK_NAME):  # Prüft, ob die Maske existiert.
+                raise FileNotFoundError(f"The mask file {MASK_NAME} does not exist.")  # Fehler, falls Maske fehlt.
+            mask = Image.open(MASK_NAME).convert('L')  # Öffnet die Maske als Graustufenbild.
+
         else:
             mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Gibt Dummy-Maske zurück, falls nicht train.
-
-        if self.transform:  # Wenn Transformationen gesetzt sind.
-            image = self.transform(image)  # Transformiert das Bild.
 
         return image, mask  # Gibt Bild und Maske (beides als Tensor) zurück.
