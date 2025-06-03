@@ -83,25 +83,26 @@ def train(
     for epoch in range(num_epochs):
         model.train()# Setzt das Modell in den Trainingsmodus
         
-        print('****************************') # Druckt Trenner für die Übersichtlichkeit.
+        print('****************************')
         print(epoch)
         print('****************************')
 
         # Schleife über alle Trainings-Batches.
         for image, gt_mask in train_dataloader:
             image = image.to(device)  # Verschiebt die Eingabebilder auf das Device.
-            # Verschiebt die Ground-Truth-Masken auf das Device.
-            gt_mask = gt_mask.to(device)
-            # Setzt die Gradienten im Optimierer auf Null zurück.
-            optimizer.zero_grad()
-            # Berechnet die Modellvorhersage für die Bilder.
+            gt_mask = gt_mask.to(device)  # Verschiebt die Ground-Truth-Masken auf das Device.
+            
+            optimizer.zero_grad() # Setzt die Gradienten im Optimierer auf Null zurück.
+            #Forward 
             output = model(image)
-            # Berechnet den Loss zwischen Vorhersage und Ground Truth.
             loss = criterion(output, gt_mask.float())
+
             # Backpropagation: Gradienten berechnen.
             loss.backward()
+
             # Aktualisiert die Modellparameter anhand der Gradienten.
             optimizer.step()
+
             # Scheduler-Update, passt ggf. die Lernrate an.
             lr_scheduler.step()
             # Gibt Loss und IoU für das aktuelle Batch aus.
@@ -113,39 +114,30 @@ def train(
         # Speichert das Modell nach jeder Epoche als Checkpoint.
         torch.save(model.state_dict(), os.path.join(ckpt_dir, "last_epoch.pth"))
 
-        # Führt Validierung aus, wenn die Epoche das Validierungsintervall trifft.
-        if epoch % val_frequency == 0:
-            # Setzt das Modell in den Evaluierungsmodus.
-            model.eval()
-            # Initialisiert eine Liste für Bild-IDs.
-            image_ids = []
-            # Initialisiert eine Liste für vorhergesagte Masken.
-            pred_masks = []
+### Test Daten  
+    model.eval() # Setzt das Modell in den Evaluierungsmodus.
+    image_ids = [] #Initialisiert eine Liste für Bild-IDs.
+    pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
 
-            # Startet einen Kontext ohne Gradientenberechnung (spart Speicher/Zeit).
-            with torch.no_grad():
-                # Schleife über alle Testbilder im DataLoader.
-                for i, (image, _) in enumerate(test_dataloader):
-                    # Verschiebt das Testbild auf das Device.
-                    image = image.to(device)
-                    # Berechnet die Vorhersage des Modells für das Testbild.
-                    test_output = model(image)
-                    # Wendet eine Sigmoid-Funktion auf die Modellvorhersage an (für binäre Segmentierung).
-                    test_output = torch.nn.Sigmoid()(test_output)
-                    # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
-                    pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
-                    # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
-                    pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
-                    # Speichert die Maske als PNG im Ausgabeverzeichnis.
-                    pred_mask_image.save(os.path.join(out_dir, f"{str(i).zfill(4)}_mask.png"))
-                    # Fügt die Bild-ID zur Liste hinzu.
-                    image_ids.append(str(i).zfill(4))
-                    # Fügt die Vorhersagemaske zur Liste hinzu.
-                    pred_masks.append(pred_mask)
+    with torch.no_grad():
+        # Schleife über alle Testbilder im DataLoader.
+        for i, (image, _) in enumerate(test_dataloader):
+            image = image.to(device)
+            test_output = model(image)
+            test_output = torch.nn.Sigmoid()(test_output) #binaere Segmentierung in ETH Tasse und Hintergrund 
 
-                # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
-                save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(out_dir, 'submission.csv'))
-                print(f"[INFO]: Predictions saved to {os.path.join(out_dir, 'submission.csv')}")
+            # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
+            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
+            # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
+            pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
+            pred_mask_image.save(os.path.join(out_dir, f"{str(i).zfill(4)}_mask.png"))
+            
+            image_ids.append(str(i).zfill(4))
+            pred_masks.append(pred_mask)
+
+        # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
+        save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(out_dir, 'submission.csv'))
+        print(f"[INFO]: Predictions saved to {os.path.join(out_dir, 'submission.csv')}")
 
 
 if __name__ == "__main__":
@@ -164,27 +156,20 @@ if __name__ == "__main__":
         default="./checkpoints",
         help="Path to save the model checkpoints to.",
     )
-    # Parst die übergebenen Argumente.
-    args = parser.parse_args()
-    # Holt die aktuelle Zeit.
+    
+    args = parser.parse_args() 
     now = datetime.now()
-    # Formatiert das Datum als String für den Ordnernamen.
-    dt_string = now.strftime("%Y-%m-%d-%H-%M-%S")
-    # Verbindet Checkpoint-Pfad und Zeitstring zu neuem Verzeichnis.
-    ckpt_dir = os.path.join(args.ckpt_dir, dt_string)
-    # Erstellt das Checkpoint-Verzeichnis, falls nicht vorhanden.
-    os.makedirs(ckpt_dir, exist_ok=True)
-    # Gibt aus, wo Checkpoints gespeichert werden.
+    dt_string = now.strftime("%Y-%m-%d-%H-%M-%S") # Formatiert das Datum als String für den Ordnernamen.
+    ckpt_dir = os.path.join(args.ckpt_dir, dt_string) # Verbindet Checkpoint-Pfad und Zeitstring zu neuem Verzeichnis.
+    os.makedirs(ckpt_dir, exist_ok=True)# Erstellt das Checkpoint-Verzeichnis, falls nicht vorhanden.
     print("[INFO]: Model checkpoints will be saved to:", ckpt_dir)
-    # Gibt einen Hinweis zu den Vorhersage-Dateien.
     print("PLEASE ARCHIVE PREDICTIONS FOLDER AND RENAME THE FOLDER TO predictions{number}.csv")
+    
     # Setzt den Trainingsdaten-Ordner.
     train_data_root = os.path.join(args.data_root, "train_data")
-    # Gibt den Trainingsdaten-Ordner aus.
     print(f"[INFO]: Train data root: {train_data_root}")
-    # Setzt den Validierungsdaten-Ordner.
+    
     val_data_root = os.path.join(args.data_root, "test_data")
-    # Gibt den Validierungsdaten-Ordner aus.
     print(f"[INFO]: Test data root: {val_data_root}")
 
     train(ckpt_dir, train_data_root, val_data_root) # Startet das Training mit den definierten Pfaden.
