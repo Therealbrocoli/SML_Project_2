@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from dataset_DeepLab_augmented import ETHMugsDataset
+from dataset_DeepLab_augmentiert import ETHMugsDataset
 from utils import *
 from DeepLab import DeepLab
 
@@ -199,12 +199,14 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     plot_training_progress(train_losses, val_ious)
     print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
+    
+    """
     #15. Train the model on the full dataset after determining the parameters
     t = time.perf_counter()
     print(f"[INFO]: Training the model on the full dataset...")
     full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
     epochs = config['hyperparameters']['num_epochs']
-    for epoch in range(1): #MAXI HAT HIER 1 GESCHRIEBEN VORHER STAND HIER EPOCHS
+    for epoch in range(epochs): 
         t = time.perf_counter()
         model.train()
 
@@ -226,7 +228,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: training full batches done {time.perf_counter()-t:.3f} s")
     print(f"[TIME]: train: TOTAL full training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
-
+    """
     #16. Test Daten
     t = time.perf_counter()
     model.eval() # Setzt das Modell in den Evaluierungsmodus.
