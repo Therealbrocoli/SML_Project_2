@@ -58,6 +58,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     # === ANSI TERMINAL==
     BOLD = "\033[1m"
     GREEN = "\033[92m"
+    CYAN = "\033[96m"
     RESET = "\033[0m"
 
     t0 = time.perf_counter()
@@ -159,14 +160,15 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: training batches done {time.perf_counter()-t:.3f} s")
 
         #====================================================================================
-        avg_epoch_loss = epoch_loss / len(train_loader)
-        print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
+        #avg_epoch_loss = epoch_loss / len(train_loader)
+        #print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
         #====================================================================================
 
         #13.2 Validation Loop
         t = time.perf_counter()
+        print(f"{BOLD}[INFO]: train: trainingsloop {CYAN}VALDIATION STARTS{RESET}")
         model.eval()
-        val_iou = 0
+        val_iou = 0c
         with torch.no_grad():
             for image, gt_mask in val_loader:
                 image = image.to(device)
@@ -176,7 +178,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
         val_iou /= len(val_loader)
         val_ious.append(val_iou)
-        print(f"{BOLD}[INFO] -> Validation IoU: {val_iou}{RESET}")
+        print(f"{BOLD}[INFO] -> Validation IoU: {CYAN}{val_iou}{RESET}")
         print(f"[TIME]: train: trainingsloop: Schleife valdidation loop is done{time.perf_counter()-t:.3f} s")
         
         #13.3 Learnig Rate updaten
