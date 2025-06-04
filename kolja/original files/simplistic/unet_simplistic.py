@@ -1,4 +1,5 @@
 # Simplistic version of a unet implementation, as presented in the lecture.
+#Modell
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -1,5 +1,5 @@
 """ETH Mugs Dataset."""
-
+#Datenladen und Preprocessing
 import os
 from PIL import Image
 import torch
