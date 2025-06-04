@@ -195,7 +195,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
     
-    """
+    
     #15. Train the model on the full dataset after determining the parameters
     t = time.perf_counter()
     print(f"[INFO]: Training the model on the full dataset...")
@@ -223,7 +223,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: training full batches done {time.perf_counter()-t:.3f} s")
     print(f"[TIME]: train: TOTAL full training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
-    """
+    
     #16. Test Daten
     t = time.perf_counter()
     model.eval() # Setzt das Modell in den Evaluierungsmodus.
