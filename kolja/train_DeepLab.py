@@ -263,7 +263,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
             image_ids.append(str(i).zfill(4))
             pred_masks.append(pred_mask)
-    print(f"[Time]: train: erstellen Test Masken DONE {time.perf_counter()-t0:.3f} s")
+    print(f"[Time]: train: erstellen Test Masken DONE {time.perf_counter()-t:.3f} s")
 
     # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
     t = time.perf_counter()
@@ -271,7 +271,9 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     print(f"[INFO]: train: Predictions saved to {os.path.join(config['paths']['out_dir'], 'submission.csv')}")
 
 if __name__ == "__main__":
+    print(f"{BOLD}Meine Lieben es ist mir eine Freude sie begrüssen zu dürfen wir beginnen...{RESET}")
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
+    
     parser = argparse.ArgumentParser(description="SML Project 2.")
     # Fügt Argument für den Konfigurationspfad hinzu.
     parser.add_argument(
