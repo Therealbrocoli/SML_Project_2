@@ -248,6 +248,10 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
     print(f"[TIME]: train: initiliasierungen für Test data prediction {time.perf_counter()-t0:.3f} s")
 
+    out_dir = os.path.join('prediction')
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
+
     #17. Schleife über alle Testbilder im DataLoader.
     t = time.perf_counter()
     with torch.no_grad():
