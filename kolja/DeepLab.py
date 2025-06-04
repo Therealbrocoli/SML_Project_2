@@ -6,9 +6,14 @@ import torch.nn.functional as F
 from torchvision import models
 from utils import *
 #externalisierte Funktion aus train_DeepLab.py 
+# === ANSI TERMINAL==
+BOLD = "\033[1m"
+RED = "\033[91m"
+RESET = "\033[0m"
 
 class DeepLab(nn.Module):
     def __init__(self, num_classes=1):#eine Klasse wird segmentiert (Eth Tassen
+        print(f"{RED}[INFO]: DeepLab__init__ has been entered{RESET}")
         super(DeepLab, self).__init__()
 
         # Lade ein ResNet-Modell ohne vortrainierte Gewichte
@@ -23,7 +28,11 @@ class DeepLab(nn.Module):
         # Letzte Schicht zur Erzeugung der Segmentierungskarte
         self.fc = nn.Conv2d(256, num_classes, kernel_size=1)
 
+        print(f"{RED}[INFO]: DeepLab__init__ ist abgeschlossen{RESET}")
+
     def forward(self, x):
+
+        print(f"{RED}[INFO]: DeepLab_method forward has been entered{RESET}")
         # Extrahiere Merkmale mit dem Backbone
         x = self.backbone(x)
 
@@ -36,11 +45,14 @@ class DeepLab(nn.Module):
         # Interpoliere auf die ursprüngliche Bildgröße
         x = F.interpolate(x, size=(252, 376), mode='bilinear', align_corners=False)
 
+        print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
+
         return x # sigmoid wird in train gemacht ETH Tasse (1) oder Hintergrund (0)
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels):
+        print(f"{RED}[INFO]: ASPP__init__ has been entered{RESET}")
         super(ASPP, self).__init__()
-
+        
         # Atrous Convolution mit unterschiedlichen Raten
 #Optimierungsmoeglichkeiten
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
@@ -55,8 +67,10 @@ class ASPP(nn.Module):
         )
 
         self.out = nn.Conv2d(out_channels * 5, out_channels, kernel_size=1)
+        print(f"{RED}[INFO]: ASPP__init__ ist abgeschlossen{RESET}")
 
     def forward(self, x):
+        print(f"{RED}[INFO]: DeepLab_method forward has been entered{RESET}")
         # Wende verschiedene atrous convolutions an
         x1 = self.conv1(x)
         x2 = self.conv2(x)
@@ -70,6 +84,7 @@ class ASPP(nn.Module):
         # Verkette die Ergebnisse und wende eine 1x1 convolution an
         x = torch.cat([x1, x2, x3, x4, x5], dim=1)
         x = self.out(x)
+        print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
 
         return x
 
