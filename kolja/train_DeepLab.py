@@ -4,6 +4,7 @@ import random
 import numpy as np
 from datetime import datetime
 import torch
+import time
 import yaml
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
@@ -15,6 +16,7 @@ from DeepLab import DeepLab
 
 def load_config(config_path):
     """Lädt die Konfiguration aus einer YAML-Datei."""
+    t = time.perf_counter()
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
