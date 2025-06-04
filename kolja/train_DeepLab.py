@@ -119,17 +119,18 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     t = time.perf_counter()
     model = build_model()
     model.to(device) # GPU oder CPU
-    print(f"[Time]: train: model is build and transferred to the {BOLD}{GREEN}{device}{RESET} {time.perf_counter()-t:.3f} s")
+    print(f"[Time]: train: model is build and transferred to device {BOLD}{GREEN}{device}{RESET} {time.perf_counter()-t:.3f} s")
 
     # Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
     t = time.perf_counter()
     criterion = torch.nn.BCELoss()
-    print(f"[Time]: train: loss function is defined as 'criterion' {time.perf_counter()-t:.3f} s")
+    print(f"[Time]: train: binary loss function is defined as 'criterion' for segmentation {time.perf_counter()-t:.3f} s")
 
     # Initialisiert den Adam-Optimizer mit Lernrate.
     t = time.perf_counter()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['hyperparameters']['learning_rate'])
-    print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
+    lr=config['hyperparameters']['learning_rate']
+    optimizer = torch.optim.Adam(model.parameters(), lr)
+    print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' with learning rate {BOLD}{lr}{RESET}  {time.perf_counter()-t:.3f} s")
 
     # Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
     t = time.perf_counter()
