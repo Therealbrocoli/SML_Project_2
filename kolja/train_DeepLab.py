@@ -150,9 +150,9 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         model.train() 
         print(f"[Time]: train: trainingsloop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
-        print('-'*50)
+        print('-'*20)
         print(f"{BOLD}EPOCH {epoch}{RESET}")
-        print('_'*50)
+        print('-'*20)
 
         #13.2 Schleife über alle Trainings-Batches.
         t = time.perf_counter()
@@ -203,24 +203,27 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         t = time.perf_counter()
         torch.save(model.state_dict(), os.path.join(ckpt_dir, f"epoch_{epoch + 1}.pth"))
         print(f"[Time]: train: trainingsloop: checkpoints has been saved {time.perf_counter()-t:.3f} s")
+
     print(f"[Time]: train: TOTAL Training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
-    #14 Plotting of the training and valdiation
+    #14. Plotting of the training and valdiation
     t = time.perf_counter()
     print(f"[INFO]: train: plotting starts {time.perf_counter()-t:.3f} s")
     plot_training_progress(train_losses, val_ious)
     print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
-    #15 Train the model on the full dataset after determining the parameters
-    print("[INFO]: Training the model on the full dataset...")
+    #15. Train the model on the full dataset after determining the parameters
+    t = time.perf_counter()
+    print(f"[INFO]: Training the model on the full dataset...")
     full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
 
     for epoch in range(config['hyperparameters']['num_epochs']):
+        t = time.perf_counter()
         model.train()
 
-        print('****************************')
+        print('-t'*20)
         print(f"Full dataset training - Epoch {epoch}")
-        print('****************************')
+        print('-t'*20)
 
         for image, gt_mask in full_train_loader:
             image = image.to(device)
@@ -232,16 +235,21 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
             loss.backward()
             optimizer.step()
 
-            print("Training Loss: {}".format(loss.data.cpu().numpy()),
-                  "- IoU: {}".format(compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())))
+            print(f"{BOLD}[INFO]: -> Training Loss: {loss.data.cpu().numpy()} - IoU: {compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())}{RESET}")
+        print(f"[Time]: train: trainingsloop: training full batches done {time.perf_counter()-t:.3f} s")
+    print(f"[Time]: train: TOTAL full training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
-    # Test Daten
+
+    #16. Test Daten
+    t = time.perf_counter()
     model.eval() # Setzt das Modell in den Evaluierungsmodus.
     image_ids = [] # Initialisiert eine Liste für Bild-IDs.
     pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
+    print(f"[Time]: train: initiliasierungen für Test data prediction {time.perf_counter()-t0:.3f} s")
 
+    #17. Schleife über alle Testbilder im DataLoader.
+    t = time.perf_counter()
     with torch.no_grad():
-        # Schleife über alle Testbilder im DataLoader.
         for i, (image, _) in enumerate(test_loader):
             image = image.to(device)
             test_output = model(image)
@@ -255,10 +263,12 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
             image_ids.append(str(i).zfill(4))
             pred_masks.append(pred_mask)
+    print(f"[Time]: train: erstellen Test Masken DONE {time.perf_counter()-t0:.3f} s")
 
     # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
+    t = time.perf_counter()
     save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(config['paths']['out_dir'], 'submission.csv'))
-    print(f"[INFO]: Predictions saved to {os.path.join(config['paths']['out_dir'], 'submission.csv')}")
+    print(f"[INFO]: train: Predictions saved to {os.path.join(config['paths']['out_dir'], 'submission.csv')}")
 
 if __name__ == "__main__":
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
