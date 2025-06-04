@@ -203,8 +203,8 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     t = time.perf_counter()
     print(f"[INFO]: Training the model on the full dataset...")
     full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
-
-    for epoch in range(config['hyperparameters']['num_epochs']):
+    epochs = config['hyperparameters']['num_epochs']
+    for epoch in range(1): #MAXI HAT HIER 1 GESCHRIEBEN VORHER STAND HIER EPOCHS
         t = time.perf_counter()
         model.train()
 
