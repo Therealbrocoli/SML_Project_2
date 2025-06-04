@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-from torchvision import transforms
+from torchvision.transforms import v2 as transforms
 
 class ETHMugsDataset(Dataset):
     """Torch-Dataset Version 2."""
@@ -34,7 +34,8 @@ class ETHMugsDataset(Dataset):
             transforms.RandomVerticalFlip(p=0.5),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomRotation(10),
-            transforms.RandAugment(num_ops=2, magnitude=5),  # optional: nur eine leichte Augmentierung
+            transforms.ColorJitter(), # optional: Helligkeit, Kontrast, Sättigung und Farbton anpassen
+            transforms.RandomAdjustSharpness(sharpness_factor=2), # optional: schärft das Bild (doppelt so scharf)
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
