@@ -182,10 +182,16 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
                 image = image.to(device)
                 gt_mask = gt_mask.to(device)
                 logits = model(image)
-                preds = (torch.sigmoid(logits) > 0.5).float()
-                val_iou += compute_iou(preds.cpu().numpy(), gt_mask.cpu().numpy())
+                preds = torch.sigmoid(logits).float()
 
-        val_iou /= len(val_loader)
+                # ### Batch‐Dimension aufsplitten und individual IoU berechnen ###
+                for b in range(preds.shape[0]):  ### 
+                    pred_2d = (preds[b, 0].cpu().numpy() > 0.5).astype(np.uint8)  ###
+                    gt_2d   = gt_mask[b, 0].cpu().numpy().astype(np.uint8)      ###
+                    val_iou += compute_iou(pred_2d, gt_2d)                        ###
+
+        # ### Durch die Gesamtzahl der Validierungsbeispiele teilen ###
+        val_iou /= len(val_loader.dataset)  ###
         val_ious.append(val_iou)
         print(f"{BOLD}[INFO] -> Validation IoU: {CYAN}{val_iou:.4f}{RESET}")
         print(f"[TIME]: train: trainingsloop: validation loop done {time.perf_counter()-t:.3f} s")

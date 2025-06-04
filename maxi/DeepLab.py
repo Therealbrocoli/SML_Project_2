@@ -85,60 +85,49 @@ class ASPP(nn.Module):
 class DeepLabUnet(nn.Module):
     def __init__(self, num_classes=1):
         super(DeepLabUnet, self).__init__()
-
         # 1) Backbone: ResNet-34 (ohne vortrainierte Gewichte)
         resnet = models.resnet34(weights=None)
-        # „layer0“ (Conv1 → BN → ReLU → MaxPool) liefert 64×H/4×W/4
         self.layer0 = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
             resnet.maxpool
         )
-        self.layer1 = resnet.layer1  # 64×H/4×W/4
-        self.layer2 = resnet.layer2  # 128×H/8×W/8
-        self.layer3 = resnet.layer3  # 256×H/16×W/16
-        self.layer4 = resnet.layer4  # 512×H/32×W/32
+        self.layer1 = resnet.layer1
+        self.layer2 = resnet.layer2
+        self.layer3 = resnet.layer3
+        self.layer4 = resnet.layer4
 
         # 2) ASPP auf den tiefsten Features
         self.aspp = ASPP(512, 256)
 
         # 3) Decoder: Skip‐Connections
-        #    dec3: kombiniert ASPP-Output (256×H/32×W/32 hochskaliert auf H/16×W/16) + layer3 (256×H/16×W/16)
         self.dec3 = ConvBlock(256 + 256, 256)
-        #    dec2: kombiniert dec3 (256×H/16×W/16 hochskaliert auf H/8×W/8) + layer2 (128×H/8×W/8)
         self.dec2 = ConvBlock(256 + 128, 128)
-        #    dec1: kombiniert dec2 (128×H/8×W/8 hochskaliert auf H/4×W/4) + layer1 (64×H/4×W/4)
         self.dec1 = ConvBlock(128 + 64, 64)
 
         # 4) Finales 1×1‐Conv auf Originalgröße
         self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
 
     def forward(self, x):
-        # Backbone:
-        x0 = self.layer0(x)   # 64×(H/4)×(W/4)
-        x1 = self.layer1(x0)  # 64×(H/4)×(W/4)
-        x2 = self.layer2(x1)  # 128×(H/8)×(W/8)
-        x3 = self.layer3(x2)  # 256×(H/16)×(W/16)
-        x4 = self.layer4(x3)  # 512×(H/32)×(W/32)
+        x0 = self.layer0(x)
+        x1 = self.layer1(x0)
+        x2 = self.layer2(x1)
+        x3 = self.layer3(x2)
+        x4 = self.layer4(x3)
 
-        # ASPP auf tiefsten Features
-        a = self.aspp(x4)     # 256×(H/32)×(W/32)
+        a = self.aspp(x4)
 
-        # Decoder‐Stufe 1 (H/16 × W/16)
         a_up3 = F.interpolate(a, size=x3.shape[2:], mode='bilinear', align_corners=False)
-        d3 = self.dec3(torch.cat([a_up3, x3], dim=1))  # 256×(H/16)×(W/16)
+        d3 = self.dec3(torch.cat([a_up3, x3], dim=1))
 
-        # Decoder‐Stufe 2 (H/8 × W/8)
         d3_up2 = F.interpolate(d3, size=x2.shape[2:], mode='bilinear', align_corners=False)
-        d2 = self.dec2(torch.cat([d3_up2, x2], dim=1))  # 128×(H/8)×(W/8)
+        d2 = self.dec2(torch.cat([d3_up2, x2], dim=1))
 
-        # Decoder‐Stufe 3 (H/4 × W/4)
         d2_up1 = F.interpolate(d2, size=x1.shape[2:], mode='bilinear', align_corners=False)
-        d1 = self.dec1(torch.cat([d2_up1, x1], dim=1))   # 64×(H/4)×(W/4)
+        d1 = self.dec1(torch.cat([d2_up1, x1], dim=1))
 
-        # Auf Originalgröße hochskalieren
-        out = F.interpolate(d1, size=IMAGE_SIZE, mode='bilinear', align_corners=False)  # 64×H×W
-        logits = self.final_conv(out)  # num_classes×H×W
+        out = F.interpolate(d1, size=IMAGE_SIZE, mode='bilinear', align_corners=False)
+        logits = self.final_conv(out)
 
         return logits
