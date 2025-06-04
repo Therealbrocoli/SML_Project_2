@@ -81,27 +81,11 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     train_dataset, val_dataset = random_split(full_train_dataset, [train_len, val_len])
     print(f"[TIME]: train: full_train_dataset has been splitted into train and val {time.perf_counter()-t:.3f} s")
 
-    #4. Traindata Augmentation
-    #====================================================================================
-    print(f"{GREEN}[ATTENTION]: train: The Augmentation is still not implemented{RESET}")
-    #====================================================================================
-
     #5. Erstelle DataLoader für Trainings- und Validierungsdaten
     t = time.perf_counter()
     train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
     print(f"[TIME]: train: train & val Dataloading is done {time.perf_counter()-t:.3f} s")
-
-     #6. Traindata Augmentation
-    #====================================================================================
-    print(f"{GREEN}[ATTENTION]: train: data flattening is still not implemented{RESET}")
-    """
-    for images_batch, masks_batch in train_loader:
-    B, V, C, H, W = images_batch.shape
-    images_flat = images_batch.view(B * V, C, H, W)
-    masks_flat  = masks_batch.view (B * V, 1, H, W)
-    """
-    #====================================================================================
 
     #7. Lade Testdaten
     t = time.perf_counter()
