@@ -3,3 +3,5 @@ __pycache__/
 Archive/
 checkpoints/
 prediction/
+datasets/
+__pycache__

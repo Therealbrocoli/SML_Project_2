@@ -8,7 +8,7 @@ import time
 import yaml
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
-from torchvision import transforms
+from torchvision import transforms  ####
 from PIL import Image
 from dataset_DeepLab_augmentiert import ETHMugsDataset
 from utils import *
@@ -88,17 +88,15 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=2, pin_memory=True)
     print(f"[TIME]: train: train & val Dataloading is done {time.perf_counter()-t:.3f} s")
 
-    #7. Lade Testdaten
-    t = time.perf_counter()
-    test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="test")
-    test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=2, pin_memory=True)
-    print(f"[TIME]: train: test_dataset is loaded and ready to use {time.perf_counter()-t:.3f} s")
+    #7. Lade Testdaten (wird im Inferenz-Loop manuell geladen)
+    # (kein DataLoader für Test hier)
 
     #8. Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
     t = time.perf_counter()
-    os.makedirs(config['paths']['out_dir'], exist_ok=True)
+    save_dir = config['paths']['out_dir']  ####
+    os.makedirs(save_dir, exist_ok=True)  ####
     # Gibt aus, wohin die Masken gespeichert werden.
-    print(f"[INFO]: train: will save the predicted segmentation masks to {config['paths']['out_dir']} {time.perf_counter()-t:.3f} s")
+    print(f"[INFO]: train: will save the predicted segmentation masks to {save_dir} {time.perf_counter()-t:.3f} s")
 
     #9. Model
     t = time.perf_counter()
@@ -113,14 +111,14 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #11. Initialisiert den Adam-Optimizer mit Lernrate.
     t = time.perf_counter()
-    lr=float(config['hyperparameters']['learning_rate'])
+    lr = float(config['hyperparameters']['learning_rate'])
     optimizer = torch.optim.Adam(model.parameters(), lr)
     print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' with learning rate {BOLD}{lr}{RESET}  {time.perf_counter()-t:.3f} s")
 
     #12. Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
     t = time.perf_counter()
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5)
-    print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
+    print(f"[TIME]: train: ReduceLROnPlateau-Scheduler is defined {time.perf_counter()-t:.3f} s")
 
     #13. Schleife über alle Trainingsepochen.
     t0 = time.perf_counter()
@@ -136,7 +134,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
         print('-'*40)
-        print(f"{BOLD}EPOCH {epoch}, LR {lr_scheduler.get_last_lr()}{RESET}")
+        print(f"{BOLD}EPOCH {epoch}, LR {lr_scheduler.optimizer.param_groups[0]['lr']}{RESET}")
         print('-'*40)
 
         #13.2 Schleife über alle Trainings-Batches.
@@ -188,85 +186,59 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     print(f"[TIME]: train: TOTAL Training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
-    #14. Plotting of the training and valdiation
+    #14. Plotting of the training und validation
     t = time.perf_counter()
     print(f"[INFO]: train: plotting starts {time.perf_counter()-t:.3f} s")
     plot_training_progress(train_losses, val_ious)
     print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
-    
-    """
-    #15. Train the model on the full dataset after determining the parameters
+    #16. Test Daten – angepasst an funktionierenden Code
     t = time.perf_counter()
-    print(f"[INFO]: Training the model on the full dataset...")
-    full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
-    epochs = config['hyperparameters']['num_epochs']
-    for epoch in range(epochs): 
-        t = time.perf_counter()
-        model.train()
+    model.eval()  # Setzt das Modell in den Evaluierungsmodus.
+    image_ids = []  # Initialisiert eine Liste für Bild-IDs.
+    pred_masks = []  # Initialisiert eine Liste für vorhergesagte Masken.
+    print(f"[TIME]: train: initiliasierungen für Test data prediction {time.perf_counter()-t:.3f} s")
 
-        print('-'*40)
-        print(f"Full dataset training - Epoch {epoch}")
-        print('-'*40)
+    td = os.path.join(val_data_root, "rgb")  ####
+    to_tensor = transforms.ToTensor()  ####
+    # Wenn Normalize benötigt wird:
+    mean_values, std_values = ([0.48, 0.43, 0.39],[0.24, 0.25, 0.23])
+    normalize = transforms.Normalize(mean_values, std_values)
+    print(f"{BOLD}Starte Inferenz für Testdaten ...{RESET}")  ####
 
-        for image, gt_mask in full_train_loader:
-            image = image.to(device)
-            gt_mask = gt_mask.to(device)
+    for fname in sorted(os.listdir(td)):  ####
+        if not fname.endswith((".jpg", ".png")):  ####
+            continue  ####
+        n = fname.replace("_rgb","")[:-4]  ####
+        p_jpg = os.path.join(td, f"{n}_rgb.jpg")  ####
+        p_png = os.path.join(td, f"{n}_rgb.png")  ####
+        img_path = p_jpg if os.path.exists(p_jpg) else p_png  ####
+        img = Image.open(img_path).convert("RGB")  ####
 
-            optimizer.zero_grad()
-            output = model(image)
-            loss = criterion(output, gt_mask.float())
-            loss.backward()
-            optimizer.step()
+        # Transformieren wie im working code:
+        img_t = to_tensor(img)  ####
+        # Wenn ihr Normalisierung verwendet, hier aktivieren:
+        img_t = normalize(img_t)
+        img_t = img_t.unsqueeze(0).to(device)  ####
 
-            print(f"{BOLD}[INFO]: -> Training Loss: {loss.data.cpu().numpy()} - IoU: {compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())}{RESET}")
-        print(f"[TIME]: train: trainingsloop: training full batches done {time.perf_counter()-t:.3f} s")
-    print(f"[TIME]: train: TOTAL full training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
+        with torch.no_grad():  ####
+            logit = model(img_t)  ####
+            pm = (torch.sigmoid(logit) > 0.5).cpu().numpy()[0,0].astype(np.uint8)  ####
 
-    """
-    #16. Test Daten
-    t = time.perf_counter()
-    model.eval() # Setzt das Modell in den Evaluierungsmodus.
-    image_ids = [] # Initialisiert eine Liste für Bild-IDs.
-    pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
-    print(f"[TIME]: train: initiliasierungen für Test data prediction {time.perf_counter()-t0:.3f} s")
+        # Einzelbild speichern
+        out_path = os.path.join(save_dir, f"{n}_mask.png")  ####
+        Image.fromarray((pm * 255).astype(np.uint8)).save(out_path)  ####
 
-    out_dir = os.path.join('prediction')
-    os.makedirs(out_dir, exist_ok=True)
-    print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
+        # In Listen aufnehmen
+        image_ids.append(n)  ####
+        pred_masks.append(pm)  ####
 
-    #17. Schleife über alle Testbilder im DataLoader.
-    t = time.perf_counter()
-    with torch.no_grad():
-        for i, (image, _) in enumerate(test_loader):
-            image = image.to(device)
-            # es sind jeweils 32 Bilder #print(f"[DEBUG_IMAGE] Shape: {image.shape}")
-            # 32,3,252,378
-            test_output = model(image)  # 32,1,252,378
-            test_output = torch.nn.Sigmoid()(test_output) # # 32,1,252,378 # binäre Segmentierung in ETH Tasse und Hintergrund
-
-            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()  # reduziert Dimension  # 32,252,378
-
-            # Konvertieren zu uint8 für PIL (0 oder 255)
-            pred_mask = (pred_mask * 255).astype(np.uint8) # 32, 252, 378
-
-            for idx in range(pred_mask.shape[0]):
-                #print(f"[DEBUG_pred_mask_idx] Shape: {pred_mask[idx].shape}")
-                # 4. In PIL-Bild umwandeln und speichern
-                pred_mask_image = Image.fromarray(pred_mask[idx])      
-
-                pfad = os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png")
-                pred_mask_image.save(pfad)
-
-                image_ids.append(str(i).zfill(4))
-                pred_masks.append(pred_mask)
-    print(f"[TIME]: train: erstellen Test Masken DONE {time.perf_counter()-t:.3f} s")
+    print(f"[TIME]: train: Test-Masken erstellt und gespeichert {time.perf_counter()-t:.3f} s")
 
     # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
     t = time.perf_counter()
-    save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(config['paths']['out_dir'], 'submission.csv'))
-    print(f"[INFO]: train: Predictions saved to {os.path.join(config['paths']['out_dir'], 'submission.csv')}")
-
+    save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(save_dir, 'submission.csv'))  ####
+    print(f"[INFO]: train: Predictions saved to {os.path.join(save_dir, 'submission.csv')}")
 
 if __name__ == "__main__":
      # === ANSI TERMINAL==

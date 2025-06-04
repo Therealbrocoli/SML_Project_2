@@ -3,7 +3,7 @@ __pycache__/
 Archive/
 checkpoints/
 prediction/
-kolja\datasets
-maxi\datasets
-emanuel\datasets
+kolja\datasets/
+maxi\datasets/
+emanuel\datasets/
 datasets/
