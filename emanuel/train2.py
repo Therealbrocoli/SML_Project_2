@@ -10,6 +10,7 @@ from torch.nn import BCEWithLogitsLoss
 import numpy as np
 import matplotlib.pyplot as plt
 from torchvision.transforms import ToPILImage
+from torch.utils.data import random_split
 
 
 
@@ -23,14 +24,14 @@ def validate(model, dataloader, device):
     with torch.no_grad():
         for batch in dataloader:
             if len(batch) != 2:
-                continue  # Skip batches without ground truth
+                continue  # Batches überspringen, die nicht die erwartete Struktur haben
             image, gt_mask = batch
             image, gt_mask = image.to(device), gt_mask.to(device)
             output = model(image)
             pred_mask = (torch.sigmoid(output) > 0.5).float()
             iou = compute_iou(pred_mask.cpu().numpy(), gt_mask.cpu().numpy())
             ious.append(iou)
-    return np.mean(ious) if ious else 0.0
+    return np.mean(ious) if ious else 0.0 # Gibt den Durchschnitt der IoUs zurück, oder 0.0, wenn keine IoUs berechnet wurden.
 
 def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     
@@ -45,15 +46,18 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     patience = 3         # Geduld für Early Stopping
     train_batch_size = 8 # Batchgröße für das Training
     test_batch_size = 1  # Batchgröße für die Tests
-    num_epochs = 10      # Anzahl der Trainingsepochen
+    num_epochs = 100     # Anzahl der Trainingsepochen
     learning_rate = 1e-3 # Lernrate für den Optimierer
     epochs_without_improvement = 0
 
     print(f"[INFO]: Anzahl der Trainingsepochen: {num_epochs}")
     
     # Erstellen der Datensätze und DataLoader
-    train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")                                      # Trainingsdatensatz
-    test_dataset = ETHMugsDataset(root_dir=test_data_root, mode="test")                                         # Testdatensatz
+    full_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")             # Voller Datensatz für das Training
+    train_size = int(0.8 * len(full_dataset))                                         # 80% für Training
+    val_size = len(full_dataset) - train_size                                         # 20% für Validierung
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])   # Aufteilen in Trainings- und Validierungsdatensatz
+    test_dataset = ETHMugsDataset(root_dir=test_data_root, mode="test")               # Testdatensatz
     
     """# ##########################################################################
     # Data Inspection (Moved AFTER dataset initialization)
@@ -95,8 +99,14 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     #   Seine Aufgabe ist es, die Trainingsdaten effizient in kleinen Paketen, sogenannten Batches, bereitzustellen.
     #   Das Training mit Batches anstelle einzelner Datenpunkte auf einmal ist speichereffizienter und kann zu stabileren Gradienten führen.
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=train_batch_size, shuffle=True)    # Trainings-DataLoader (Shuffle für zufällige Reihenfolge)
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=test_batch_size, shuffle=False)      # Test-DataLoader (keine Zufälligkeit)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=test_batch_size, shuffle=False)         # Validations-DataLoader (test_batch_size wird hier verwendet, da wir nur eine Vorhersage pro Bild machen wollen)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=test_batch_size, shuffle=False)      # Test-DataLoader (keine Zufälligkeit, da Vorhersagen gemacht werden)
+    
+    print(f"[INFO] Number of training samples: {len(train_dataset)}")
+    print(f"[INFO] Number of validation samples: {len(val_dataset)}")
+    print(f"[INFO] Number of test samples: {len(test_dataset)}")
 
+    
     # Verzeichnis zum Speichern der Vorhersagen
     out_dir = os.path.join('prediction')
     os.makedirs(out_dir, exist_ok=True)
@@ -105,7 +115,7 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     # Initialisierung des Modells, der Verlustfunktion und des Optimierers
     model = build_model().to(device)                                        # Model wird festgelegt 
     criterion = BCEWithLogitsLoss()                                         # Verwende BCEWithLogitsLoss für binäre Segmentierung -> kein Sigmoid erforderlich
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)       # Optimierer (Stochastic Gradient Descent)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)      # Optimierer (Adam) mit Lernrate
 
     print("[INFO]: Starte das Training...")
     for epoch in range(num_epochs):                                         # Startet die Epochen-Schleife (das gesamte Trainingsdatenset wird durchlaufen)
@@ -119,11 +129,11 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
         for i, (image, gt_mask) in enumerate(train_dataloader):             # Startet die innere Batch-Schleife (Durchlaufen des Trainings-DataLoaders)
             image, gt_mask = image.to(device), gt_mask.to(device)           # Verschiebt die Bilder und Masken auf das gewählte Gerät (CPU oder GPU)
 
-            optimizer.zero_grad()           # Setzt die Gradienten zurück, um sie für die nächste Iteration neu zu berechnen
-            output = model(image)           # Berechnet die Vorhersage des Modells für die Eingabebilder
+            optimizer.zero_grad()                       # Setzt die Gradienten zurück, um sie für die nächste Iteration neu zu berechnen
+            output = model(image)                       # Berechnet die Vorhersage des Modells für die Eingabebilder
             loss = criterion(output, gt_mask.float())   # Berechnet den Verlust zwischen der Modellvorhersage und der Ground Truth-Maske
-            loss.backward() # Führt die Rückwärtspropagation durch, um die Gradienten zu berechnen.
-                            # (Gradienten geben an, wie stark sich jeder Parameter ändern müsste, um den Verlust zu reduzieren)
+            loss.backward()                             # Führt die Rückwärtspropagation durch, um die Gradienten zu berechnen.
+                                                        # (Gradienten geben an, wie stark sich jeder Parameter ändern müsste, um den Verlust zu reduzieren)
 
             optimizer.step() # verwendet die im loss.backward()-Schritt berechneten Gradienten, um die Gewichte (Parameter) des Modells zu aktualisieren
 
@@ -132,12 +142,12 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
         # Speichern des Modell-Checkpoints nach jeder Epoche
         torch.save(model.state_dict(), os.path.join(ckpt_dir, "last_epoch.pth"))
 
-        # Evaluierung mit Testdaten
+        # Evaluierung mit Validierungsdaten
         model.eval() # Vorbereitung des Modells für die Evaluierung (Deaktivierung von Dropout und BatchNorm)
         # Initialisierung von zwei leeren Listen
         image_ids, pred_masks = [], []
             # Validierung
-        val_iou = validate(model, test_dataloader, device)
+        val_iou = validate(model, val_dataloader, device)
         print(f"Validation IoU: {val_iou}")
 
         if val_iou > best_iou: # VERBESSERUNG DER VALIDIERUNGS-IoU
@@ -149,8 +159,23 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
             if epochs_without_improvement >= patience:
                 print("Early stopping triggered")
                 break
- # (Gradienten werden nur für das Training des Modells benötigt (während der Backpropagation). 
-        # Das Deaktivieren mit .no_grad() spart Speicher und Rechenzeit, da keine zusätzlichen Informationen für den Gradientenabstieg gespeichert und berechnet werden müssen.)
+    #############################################################################################################################
+    # --- Final Prediction Saving ---
+    # Load the best performing model for final predictions
+    best_model_path = os.path.join(ckpt_dir, "best_model.pth")
+    if os.path.exists(best_model_path):
+        print(f"[INFO]: Lade das beste Modell von {best_model_path} für die finalen Vorhersagen.")
+        model.load_state_dict(torch.load(best_model_path))
+    else:
+        print(f"[WARNING]: Bestes Modell nicht gefunden unter {best_model_path}. Verwende das Modell der letzten Epoche.")
+        # If best_model.pth doesn't exist (e.g., if patience=0 or first epoch was best),
+        # the model state is already from the last epoch, so no need to load last_epoch.pth explicitly.
+        # However, for robustness, you could load last_epoch.pth if best_model.pth is truly missing.
+        # For this scenario, the model variable already holds the state of the last epoch.
+
+    model.eval() # Ensure model is in evaluation mode for inference
+    #############################################################################################################################
+    # Finale Ausgabe der besten IoU nach dem Training unter Gebrauch des *wahren* Test-Sets
     with torch.no_grad():    
         # Schleife über den Test-Datenlader
         for i, test_image in enumerate(test_dataloader):

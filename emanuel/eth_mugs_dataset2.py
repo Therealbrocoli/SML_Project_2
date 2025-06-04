@@ -3,7 +3,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import v2 as transforms
 class ETHMugsDataset(Dataset):
-    
+
     """Torch-Dataset Version 2."""
 
     def __init__(self, root_dir, mode="train"):
@@ -38,20 +38,20 @@ class ETHMugsDataset(Dataset):
         # Image and Mask Transformation
         # Define a joint transform for geometric augmentations that apply to both image and mask
         self.joint_transform = transforms.Compose([
-            transforms.Resize((252, 376)), # Resize both to the target size
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomRotation(10),
-            # transforms.ColorJitter(), # Apply only to image, not mask
-            # transforms.RandomAdjustSharpness(sharpness_factor=2), # Apply only to image, not mask
+            transforms.Resize((252, 376)),          # Resize both to the target size
+            transforms.RandomHorizontalFlip(p=0.5), # Random horizontal flip
+            transforms.RandomVerticalFlip(p=0.5),   # Random vertical flip
+            transforms.RandomRotation(10),          # Random rotation within 10 degrees
         ])
 
         # Image-specific transforms (after joint transforms)
         self.image_only_transform = transforms.Compose([
-            transforms.ColorJitter(),
-            transforms.RandomAdjustSharpness(sharpness_factor=2),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))
+            transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1),  # Helligkeit, Kontrast, Sättigung, Farbton
+            transforms.RandomAdjustSharpness(sharpness_factor=2),                           # Schärfe
+            transforms.RandomAutocontrast(p=0.5),                                           # Kontrast
+            transforms.RandomEqualize(p=0.5),                                               # Histogram-Ausgleich
+            transforms.ToTensor(),                                                          # Konvertiert zu Tensor       
+            transforms.Normalize((0.5,), (0.5,))                                            # Normalisiert den Tensor
         ])
 
         # Mask-specific transforms (after joint transforms)
