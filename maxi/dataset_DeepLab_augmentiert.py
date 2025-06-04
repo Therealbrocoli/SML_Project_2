@@ -1,5 +1,4 @@
 import time
-t0 = time.perf_counter()
 import os
 import random
 from PIL import Image
@@ -10,7 +9,6 @@ import torchvision.transforms.functional as TF
 from torchvision.transforms import InterpolationMode
 from utils import IMAGE_SIZE  #(W, H)
 
-
 # =====ANSI Terminal===
 BOLD = "\033[1m"
 CYAN = "\033[96m"
@@ -18,8 +16,6 @@ YELLOW = "\033[93m"
 GREEN = "\033[92m"
 RED = "\033[91m"
 RESET = "\033[0m"
-print(f"{BOLD}[TIME]: importing libraries done {time.perf_counter()-t0:.3f} s{RESET}")
-
 
 class ETHMugsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):

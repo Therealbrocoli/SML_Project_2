@@ -12,7 +12,7 @@ from torchvision import transforms  ####
 from PIL import Image
 from dataset_DeepLab_augmentiert import ETHMugsDataset
 from utils import *
-from DeepLab import DeepLab
+from DeepLab2 import DeepLab
 
 def load_config(config_path):
     """Lädt die Konfiguration aus einer YAML-Datei."""
