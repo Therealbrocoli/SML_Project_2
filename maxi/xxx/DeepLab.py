@@ -28,7 +28,7 @@ class DeepLab(nn.Module):
         # Letzte Schicht zur Erzeugung der Segmentierungskarte
         self.fc = nn.Conv2d(256, num_classes, kernel_size=1)
 
-        print(f"{RED}[INFO]: DeepLab__init__ ist abgeschlossen{RESET}")
+        #print(f"{RED}[INFO]: DeepLab__init__ ist abgeschlossen{RESET}")
 
     def forward(self, x):
 
@@ -45,7 +45,7 @@ class DeepLab(nn.Module):
         # Interpoliere auf die ursprüngliche Bildgröße
         x = F.interpolate(x, size=IMAGE_SIZE, mode='bilinear', align_corners=False)
 
-        print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
+        #print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
 
         return torch.sigmoid(x) # sonst bekommt CUDA ein Problem
 class ASPP(nn.Module):
@@ -67,10 +67,10 @@ class ASPP(nn.Module):
         )
 
         self.out = nn.Conv2d(out_channels * 5, out_channels, kernel_size=1)
-        print(f"{RED}[INFO]: ASPP__init__ ist abgeschlossen{RESET}")
+        #print(f"{RED}[INFO]: ASPP__init__ ist abgeschlossen{RESET}")
 
     def forward(self, x):
-        print(f"{RED}[INFO]: DeepLab_method forward has been entered{RESET}")
+        print(f"{RED}[INFO]: ASPP_method forward has been entered{RESET}")
         # Wende verschiedene atrous convolutions an
         x1 = self.conv1(x)
         x2 = self.conv2(x)
@@ -84,7 +84,7 @@ class ASPP(nn.Module):
         # Verkette die Ergebnisse und wende eine 1x1 convolution an
         x = torch.cat([x1, x2, x3, x4, x5], dim=1)
         x = self.out(x)
-        print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
+        #print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
 
         return x
 
