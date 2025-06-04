@@ -271,6 +271,10 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     print(f"[INFO]: train: Predictions saved to {os.path.join(config['paths']['out_dir'], 'submission.csv')}")
 
 if __name__ == "__main__":
+    # === ANSI TERMINAL==
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
     print(f"{BOLD}Meine Lieben es ist mir eine Freude sie begrüssen zu dürfen wir beginnen...{RESET}")
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
     
