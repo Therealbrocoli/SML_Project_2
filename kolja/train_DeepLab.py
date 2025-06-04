@@ -55,65 +55,86 @@ def build_model():
 
 # Definiert die Trainingsfunktion mit Speicherorten für Checkpoints und Daten als Argumente.
 def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict):
+    # === ANSI TERMINAL==
     BOLD = "\033[1m"
     GREEN = "\033[92m"
     RESET = "\033[0m"
+
     t0 = time.perf_counter()
     print(f"[INFO]: train: has been started")
 
-    # Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
+    #1. Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
     t = time.perf_counter()
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print(f"[Time]: train: train devive {BOLD}{GREEN}{device}{RESET} is choosen {time.perf_counter()-t:.3f} s")
 
-    # Lade das vollständige Trainingsdataset
+    #2. Lade das vollständige Trainingsdataset
     t = time.perf_counter()
     full_train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
     print(f"[Time]: train: full_train_dataset is loaded as class ETHMugsDataset {time.perf_counter()-t:.3f} s")
 
 
-    # Train-Validation Split
+    #3. Train-Validation Split
     t = time.perf_counter()
     train_len = int(0.8 * len(full_train_dataset))
     val_len = len(full_train_dataset) - train_len
     train_dataset, val_dataset = random_split(full_train_dataset, [train_len, val_len])
+    print(f"[Time]: train: full_train_dataset has been splitted into train and val {time.perf_counter()-t:.3f} s")
 
-     # Traindata Augmentation
+    #4. Traindata Augmentation
+    #====================================================================================
+    print(f"{GREEN}[ATTENTION]: train: The Augmentation is still not implemented{RESET}")
     #====================================================================================
 
-
-    #====================================================================================
-
-    # Erstelle DataLoader für Trainings- und Validierungsdaten
+    #5. Erstelle DataLoader für Trainings- und Validierungsdaten
+    t = time.perf_counter()
     train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    print(f"[Time]: train: train & val Dataloading is done {time.perf_counter()-t:.3f} s")
 
+     #6. Traindata Augmentation
+    #====================================================================================
+    print(f"{GREEN}[ATTENTION]: train: data flattening is still not implemented{RESET}")
     """
     for images_batch, masks_batch in train_loader:
     B, V, C, H, W = images_batch.shape
     images_flat = images_batch.view(B * V, C, H, W)
     masks_flat  = masks_batch.view (B * V, 1, H, W)
     """
+    #====================================================================================
 
-    # Lade Testdaten
+    #7. Lade Testdaten
+    t = time.perf_counter()
     test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="test")
     test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    print(f"[Time]: train: test_dataset is loaded and ready to use {time.perf_counter()-t:.3f} s")
 
-    # Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
+    #8. Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
+    t = time.perf_counter()
     os.makedirs(config['paths']['out_dir'], exist_ok=True)
     # Gibt aus, wohin die Masken gespeichert werden.
-    print(f"[INFO]: Saving the predicted segmentation masks to {config['paths']['out_dir']}")
+    print(f"[INFO]: train: will save the predicted segmentation masks to {config['paths']['out_dir']} {time.perf_counter()-t:.3f} s")
 
-    # Model
+    #9. Model
+    t = time.perf_counter()
     model = build_model()
     model.to(device) # GPU oder CPU
+    print(f"[Time]: train: model is build and transferred to the {BOLD}{GREEN}{device}{RESET} {time.perf_counter()-t:.3f} s")
 
     # Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
+    t = time.perf_counter()
     criterion = torch.nn.BCELoss()
+    print(f"[Time]: train: loss function is defined as 'criterion' {time.perf_counter()-t:.3f} s")
+
     # Initialisiert den Adam-Optimizer mit Lernrate.
+    t = time.perf_counter()
     optimizer = torch.optim.Adam(model.parameters(), lr=config['hyperparameters']['learning_rate'])
+    print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
+
     # Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
+    t = time.perf_counter()
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5, verbose=True)
+    print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
 
     train_losses = []
     val_ious = []
