@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from dataset_DeepLab_augmentiert import ETHMugsDataset
+from dataset_DeepLab_augmented import ETHMugsDataset
 from utils import *
 from DeepLab import DeepLab
 
@@ -58,6 +58,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     # === ANSI TERMINAL==
     BOLD = "\033[1m"
     GREEN = "\033[92m"
+    CYAN = "\033[96m"
     RESET = "\033[0m"
 
     t0 = time.perf_counter()
@@ -83,14 +84,14 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #5. Erstelle DataLoader für Trainings- und Validierungsdaten
     t = time.perf_counter()
-    train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=2, pin_memory=True)
     print(f"[TIME]: train: train & val Dataloading is done {time.perf_counter()-t:.3f} s")
 
     #7. Lade Testdaten
     t = time.perf_counter()
     test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="test")
-    test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=2, pin_memory=True)
     print(f"[TIME]: train: test_dataset is loaded and ready to use {time.perf_counter()-t:.3f} s")
 
     #8. Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
@@ -118,7 +119,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #12. Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
     t = time.perf_counter()
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5, verbose=True)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5)
     print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
 
     #13. Schleife über alle Trainingsepochen.
@@ -134,9 +135,9 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         model.train() 
         print(f"[TIME]: train: trainingsloop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
-        print('-'*20)
-        print(f"{BOLD}EPOCH {epoch}{RESET}")
-        print('-'*20)
+        print('-'*40)
+        print(f"{BOLD}EPOCH {epoch}, LR {lr_scheduler.get_last_lr()}{RESET}")
+        print('-'*40)
 
         #13.2 Schleife über alle Trainings-Batches.
         t = time.perf_counter()
@@ -159,12 +160,13 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: training batches done {time.perf_counter()-t:.3f} s")
 
         #====================================================================================
-        avg_epoch_loss = epoch_loss / len(train_loader)
-        print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
+        #avg_epoch_loss = epoch_loss / len(train_loader)
+        #print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
         #====================================================================================
 
         #13.2 Validation Loop
         t = time.perf_counter()
+        print(f"{BOLD}[INFO]: train: trainingsloop {CYAN}VALDIATION STARTS{RESET}")
         model.eval()
         val_iou = 0
         with torch.no_grad():
@@ -176,7 +178,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
         val_iou /= len(val_loader)
         val_ious.append(val_iou)
-        print(f"{BOLD}[INFO] -> Validation IoU: {val_iou}{RESET}")
+        print(f"{BOLD}[INFO] -> Validation IoU: {CYAN}{val_iou}{RESET}")
         print(f"[TIME]: train: trainingsloop: Schleife valdidation loop is done{time.perf_counter()-t:.3f} s")
         
         #13.3 Learnig Rate updaten
@@ -200,15 +202,15 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     #15. Train the model on the full dataset after determining the parameters
     t = time.perf_counter()
     print(f"[INFO]: Training the model on the full dataset...")
-    full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
-
-    for epoch in range(config['hyperparameters']['num_epochs']):
+    full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
+    epochs = config['hyperparameters']['num_epochs']
+    for epoch in range(1): #MAXI HAT HIER 1 GESCHRIEBEN VORHER STAND HIER EPOCHS
         t = time.perf_counter()
         model.train()
 
-        print('-t'*20)
+        print('-'*40)
         print(f"Full dataset training - Epoch {epoch}")
-        print('-t'*20)
+        print('-'*40)
 
         for image, gt_mask in full_train_loader:
             image = image.to(device)
@@ -274,12 +276,12 @@ if __name__ == "__main__":
     BOLD = "\033[1m"
     RESET = "\033[0m"
 
-    t = time.time()
+    t = time.perf_counter()
     print(f"{BOLD}Meine Lieben es ist mir eine Freude sie begrüssen zu dürfen wir beginnen...{RESET}")
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
     
     parser = argparse.ArgumentParser(description="SML Project 2.")
-    print(f"[TIME]: Erstellen eines Argumentparser für Kommandozeilenargumente.  {time.perf_counter()-t:.3f} s")
+    print(f"[TIME]: Erstellen eines Argumentparser für Kommandozeilenargumente. {time.perf_counter()-t:.3f} s")
 
 
     #2. Fügt Argument für den Konfigurationspfad hinzu.
