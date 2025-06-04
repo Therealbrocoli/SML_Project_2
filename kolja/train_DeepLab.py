@@ -19,10 +19,12 @@ def load_config(config_path):
     t = time.perf_counter()
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
+    print(f"[Time]: load_config: Config is loaded in {time.perf_counter()-t:.3f} s")
     return config
 
 def plot_training_progress(train_losses, val_ious):
     """Plottet den Trainingsverlauf."""
+    t = time.perf_counter()
     plt.figure(figsize=(12, 5))
 
     plt.subplot(1, 2, 1)
@@ -42,27 +44,36 @@ def plot_training_progress(train_losses, val_ious):
     plt.tight_layout()
     plt.savefig('training_progress.png')
     plt.show()
+    print(f"[Time]: plot_training_progress: plot is loaded in  {time.perf_counter()-t:.3f} s")
 
 # Definiert eine Funktion, die das Modell erzeugt.
 def build_model():
     # Beschreibt in einem Docstring, dass hier das Modell gebaut wird.
     """Build the model."""
+    print(f"[INFO]: build_model: has been started")
     return DeepLab()
 
 # Definiert die Trainingsfunktion mit Speicherorten für Checkpoints und Daten als Argumente.
 def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict):
-    # seeds für das Training
-    torch.manual_seed(42)
-    random.seed(42)
+    BOLD = "\033[1m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
+    t0 = time.perf_counter()
+    print(f"[INFO]: train: has been started")
 
     # Prüft, ob eine GPU verfügbar ist und wählt das richtige Device.
+    t = time.perf_counter()
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    print(f"[INFO]: Using device: {device}")
+    print(f"[Time]: train: train devive {BOLD}{GREEN}{device}{RESET} is choosen {time.perf_counter()-t:.3f} s")
 
     # Lade das vollständige Trainingsdataset
+    t = time.perf_counter()
     full_train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")
+    print(f"[Time]: train: full_train_dataset is loaded as class ETHMugsDataset {time.perf_counter()-t:.3f} s")
+
 
     # Train-Validation Split
+    t = time.perf_counter()
     train_len = int(0.8 * len(full_train_dataset))
     val_len = len(full_train_dataset) - train_len
     train_dataset, val_dataset = random_split(full_train_dataset, [train_len, val_len])
