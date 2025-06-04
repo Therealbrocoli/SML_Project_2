@@ -128,7 +128,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #11. Initialisiert den Adam-Optimizer mit Lernrate.
     t = time.perf_counter()
-    lr=config['hyperparameters']['learning_rate']
+    lr=float(config['hyperparameters']['learning_rate'])
     optimizer = torch.optim.Adam(model.parameters(), lr)
     print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' with learning rate {BOLD}{lr}{RESET}  {time.perf_counter()-t:.3f} s")
 
@@ -163,6 +163,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
             optimizer.zero_grad()
             output = model(image)
+          
             loss = criterion(output, gt_mask.float())
             loss.backward()
             optimizer.step()
@@ -258,6 +259,9 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
             # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
             pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
             # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
+             # Ensure pred_mask is 2D
+            if pred_mask.ndim == 3 and pred_mask.shape[0] == 1:
+                pred_mask = pred_mask.squeeze(0)
             pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
             pred_mask_image.save(os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png"))
 
@@ -272,6 +276,11 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
 
 if __name__ == "__main__":
+     # === ANSI TERMINAL==
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+    t = time.time()
     print(f"{BOLD}Meine Lieben es ist mir eine Freude sie begrüssen zu dürfen wir beginnen...{RESET}")
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
     
@@ -284,7 +293,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--config",
-        default="config.yaml",
+        default="config_DeepLab.yaml",
         help="Path to the config file.",
     )
     args = parser.parse_args()
