@@ -36,19 +36,40 @@ def mask_to_rle(mask):
 
 
 def compute_iou(pred_mask, gt_mask, threshold=0.5):
-    # Ensure the masks are in the correct format
-    pred_mask = pred_mask > threshold
-    gt_mask = gt_mask > threshold
+    """
+    Berechnet den Intersection over Union (IoU) Score für binäre Masken.
+    Args:
+        pred_mask (np.ndarray): Die vorhergesagte Maske (kann Float-Werte enthalten).
+        gt_mask (np.ndarray): Die Ground Truth Maske (kann Float-Werte enthalten).
+        threshold (float): Der Schwellenwert zur Binarisierung der Masken.
+    Returns:
+        float: Der IoU-Score.
+    """
+    # Ensure the masks are binary (True/False or 0/1) based on the threshold
+    pred_mask_binary = pred_mask > threshold
+    gt_mask_binary = gt_mask > threshold
 
-    # Calculate intersection and union
-    intersection = np.logical_and(pred_mask, gt_mask)
-    union = np.logical_or(pred_mask, gt_mask)
+    # Calculate intersection and union as boolean arrays
+    intersection = np.logical_and(pred_mask_binary, gt_mask_binary)
+    union = np.logical_or(pred_mask_binary, gt_mask_binary)
 
-    # Calculate IoU
-    iou_score = np.sum(intersection) / np.sum(union)
+    # Sum the True values (which are 1 when summed)
+    intersection_sum = np.sum(intersection)
+    union_sum = np.sum(union)
+
+    # Handle the edge case where the union is zero (both masks are empty)
+    if union_sum == 0:
+        # If both masks are empty, they perfectly match, so IoU is 1.0
+        return 1.0
+    
+    # Otherwise, calculate IoU normally
+    iou_score = intersection_sum / union_sum
 
     return iou_score
 
+# You would also keep your save_predictions function here if it's in utils.py
+# def save_predictions(image_ids, pred_masks, save_path):
+#     # ... your existing save_predictions implementation ...
 
 
 def save_predictions(image_ids, pred_masks, save_path='submission.csv'):

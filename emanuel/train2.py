@@ -95,9 +95,6 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     else:
         print("[WARNING]: Training dataset is empty!")"""
 
-
-
-
     # train_dataloader: 
     #   Seine Aufgabe ist es, die Trainingsdaten effizient in kleinen Paketen, sogenannten Batches, bereitzustellen.
     #   Das Training mit Batches anstelle einzelner Datenpunkte auf einmal ist speichereffizienter und kann zu stabileren Gradienten führen.

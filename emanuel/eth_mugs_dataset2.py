@@ -1,5 +1,6 @@
 import os
 from PIL import Image
+import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import v2 as transforms
 class ETHMugsDataset(Dataset):
@@ -50,13 +51,15 @@ class ETHMugsDataset(Dataset):
             transforms.RandomAdjustSharpness(sharpness_factor=2),                           # Schärfe
             transforms.RandomAutocontrast(p=0.5),                                           # Kontrast
             transforms.RandomEqualize(p=0.5),                                               # Histogram-Ausgleich
-            transforms.ToTensor(),                                                          # Konvertiert zu Tensor       
+            transforms.ToImage(),                                                           # Konvertiert zu PIL Image
+            transforms.ToDtype(torch.float32, scale=True),                                  # Konvertiert zu Tensor       
             transforms.Normalize((0.5,), (0.5,))                                            # Normalisiert den Tensor
         ])
 
         # Mask-specific transforms (after joint transforms)
         self.mask_only_transform = transforms.Compose([
-            transforms.ToTensor() # Only ToTensor for masks (no normalization)
+            transforms.ToImage(),                           # Konvertiert zu PIL Image
+            transforms.ToDtype(torch.float32, scale=True),  # Konvertiert zu Tensor      
         ])
 
 
