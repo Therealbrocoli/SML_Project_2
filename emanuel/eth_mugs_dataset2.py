@@ -40,7 +40,7 @@ class ETHMugsDataset(Dataset):
         # Define a joint transform for geometric augmentations that apply to both image and mask
         if self.mode != "test":
             self.joint_transform = transforms.Compose([
-                transforms.Resize((252, 376)),          # Resize both to the target size
+                transforms.Resize((252, 378)),          # Resize both to the target size
                 transforms.RandomHorizontalFlip(p=0.5), # Random horizontal flip
                 transforms.RandomVerticalFlip(p=0.5),   # Random vertical flip
                 transforms.RandomRotation(10),          # Random rotation within 10 degrees
@@ -48,7 +48,7 @@ class ETHMugsDataset(Dataset):
         else:
             # For test mode, we might not need any joint transforms
             self.joint_transform = transforms.Compose([
-                transforms.Resize((252, 376)),          # Resize to the target size
+                transforms.Resize((252, 378)),          # Resize to the target size
             ])
 
         # Image-specific transforms
