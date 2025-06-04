@@ -1,3 +1,5 @@
+import time
+t0 = time.perf_counter()
 import os
 import random
 from PIL import Image
@@ -6,8 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 from torchvision.transforms import InterpolationMode
-
 from utils import IMAGE_SIZE  #(W, H)
+print(f"[TIME]: importing libraries done {time.perf_counter()-t0:.3f} s")
 
 
 class ETHMugsDataset(Dataset):
@@ -120,6 +122,26 @@ class ETHMugsDataset(Dataset):
 
 
 
+if __name__ == "__main__":
+    # =====ANSI Terminal===
+    BOLD = "\033[1m"
+    CYAN = "\033[96m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    RESET = "\033[0m"
+
+    #1. Dataset
+    t = time.perf_counter()
+    print(f"{GREEN}[INFO]: dataset starts{RESET}")
+    dataset = ETHMugsDataset("datasets/train_data", mode="train")
+    print(f"{GREEN}[TIME]: dataset done: {time.perf_counter()-t:.3f}{RESET}")
+
+    #2. Dataloader
+    t = time.perf_counter()
+    print(f"{GREEN}[INFO]: loader starts{RESET}")
+    loader  = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
+    print(f"{GREEN}[TIME]: loader done{RESET}")
 
 
 
