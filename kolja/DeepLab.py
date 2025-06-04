@@ -17,7 +17,7 @@ class DeepLab(nn.Module):
         super(DeepLab, self).__init__()
 
         # Lade ein ResNet-Modell ohne vortrainierte Gewichte
-        resnet = models.resnet50(pretrained=False)
+        resnet = models.resnet50(weights=None)
 
         # Entferne den letzten Fully-Connected-Layer und das durchschnittliche Pooling
         self.backbone = nn.Sequential(*list(resnet.children())[:-2])
