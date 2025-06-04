@@ -168,7 +168,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         t = time.perf_counter()
         print(f"{BOLD}[INFO]: train: trainingsloop {CYAN}VALDIATION STARTS{RESET}")
         model.eval()
-        val_iou = 0c
+        val_iou = 0
         with torch.no_grad():
             for image, gt_mask in val_loader:
                 image = image.to(device)
