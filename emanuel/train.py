@@ -8,7 +8,7 @@ from torchvision import transforms
 from PIL import Image
 from eth_mugs_dataset import ETHMugsDataset
 from utils import IMAGE_SIZE, compute_iou, save_predictions
-from model import FCN
+from model import FCN 
 
 print()
 # Definiert eine Funktion, die das Modell erzeugt.

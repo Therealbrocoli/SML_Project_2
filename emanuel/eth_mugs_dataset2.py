@@ -38,14 +38,20 @@ class ETHMugsDataset(Dataset):
 
         # Image and Mask Transformation
         # Define a joint transform for geometric augmentations that apply to both image and mask
-        self.joint_transform = transforms.Compose([
-            transforms.Resize((252, 376)),          # Resize both to the target size
-            transforms.RandomHorizontalFlip(p=0.5), # Random horizontal flip
-            transforms.RandomVerticalFlip(p=0.5),   # Random vertical flip
-            transforms.RandomRotation(10),          # Random rotation within 10 degrees
-        ])
+        if self.mode != "test":
+            self.joint_transform = transforms.Compose([
+                transforms.Resize((252, 376)),          # Resize both to the target size
+                transforms.RandomHorizontalFlip(p=0.5), # Random horizontal flip
+                transforms.RandomVerticalFlip(p=0.5),   # Random vertical flip
+                transforms.RandomRotation(10),          # Random rotation within 10 degrees
+            ])
+        else:
+            # For test mode, we might not need any joint transforms
+            self.joint_transform = transforms.Compose([
+                transforms.Resize((252, 376)),          # Resize to the target size
+            ])
 
-        # Image-specific transforms (after joint transforms)
+        # Image-specific transforms
         self.image_only_transform = transforms.Compose([
             transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1),  # Helligkeit, Kontrast, Sättigung, Farbton
             transforms.RandomAdjustSharpness(sharpness_factor=2),                           # Schärfe
@@ -56,7 +62,7 @@ class ETHMugsDataset(Dataset):
             transforms.Normalize((0.5,), (0.5,))                                            # Normalisiert den Tensor
         ])
 
-        # Mask-specific transforms (after joint transforms)
+        # Mask-specific transforms
         self.mask_only_transform = transforms.Compose([
             transforms.ToImage(),                           # Konvertiert zu PIL Image
             transforms.ToDtype(torch.float32, scale=True),  # Konvertiert zu Tensor      
@@ -80,13 +86,7 @@ class ETHMugsDataset(Dataset):
             orig_mask = Image.open(mask_path).convert('L') # Ensure mask is grayscale
 
             # Apply joint transforms
-            # For v2 transforms, you can apply them to a dictionary of { "image": image, "mask": mask }
-            # Or define custom functional transforms for this.
-            # A simple approach for now, assuming PIL Image for joint transforms
-            # and then converting to tensor separately.
-
-            # Create a dictionary for v2 transforms to handle both
-            data = {'image': image, 'mask': orig_mask}
+            data = {'image': image, 'mask': orig_mask}    # Create a dictionary for v2 transforms to handle bot
             transformed_data = self.joint_transform(data) # Apply transforms to both image and mask
 
             image = transformed_data['image']
