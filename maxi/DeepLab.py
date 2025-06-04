@@ -1,76 +1,84 @@
-
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 from utils import *
 #externalisierte Funktion aus train_DeepLab.py 
-# === ANSI TERMINAL==
-BOLD = "\033[1m"
-RED = "\033[91m"
-RESET = "\033[0m"
 
 class DeepLab(nn.Module):
-    def __init__(self, num_classes=1):#eine Klasse wird segmentiert (Eth Tassen
-        print(f"{RED}[INFO]: DeepLab__init__ has been entered{RESET}")
+    def __init__(self, num_classes=1):  # eine Klasse wird segmentiert (ETH Tassen)
         super(DeepLab, self).__init__()
-
         # Lade ein ResNet-Modell ohne vortrainierte Gewichte
         resnet = models.resnet50(weights=None)
-
         # Entferne den letzten Fully-Connected-Layer und das durchschnittliche Pooling
         self.backbone = nn.Sequential(*list(resnet.children())[:-2])
 
         # Atrous Spatial Pyramid Pooling (ASPP) Modul
         self.aspp = ASPP(2048, 256)
 
+        # Dropout nach ASPP zur Regularisierung
+        self.dropout = nn.Dropout2d(p=0.5)  ###
+
         # Letzte Schicht zur Erzeugung der Segmentierungskarte
         self.fc = nn.Conv2d(256, num_classes, kernel_size=1)
 
-        #print(f"{RED}[INFO]: DeepLab__init__ ist abgeschlossen{RESET}")
-
     def forward(self, x):
-
-        print(f"{RED}[INFO]: DeepLab_method forward has been entered{RESET}")
         # Extrahiere Merkmale mit dem Backbone
         x = self.backbone(x)
 
         # Wende ASPP an
         x = self.aspp(x)
+        x = self.dropout(x)  ###
 
-        # Wende die letzte Schicht an, um die Segmentierungskarte zu erhalten
+        # Wende die letzte Schicht an, um die Segmentierungskarte (Logits) zu erhalten
         x = self.fc(x)
 
         # Interpoliere auf die ursprüngliche Bildgröße
         x = F.interpolate(x, size=IMAGE_SIZE, mode='bilinear', align_corners=False)
 
-        #print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
+        return x  # roher Logit statt Sigmoid ###
 
-        return torch.sigmoid(x) # sonst bekommt CUDA ein Problem
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels):
-        print(f"{RED}[INFO]: ASPP__init__ has been entered{RESET}")
         super(ASPP, self).__init__()
-        
-        # Atrous Convolution mit unterschiedlichen Raten
-#Optimierungsmoeglichkeiten
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=3, dilation=6, padding=6)
-        self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size=3, dilation=12, padding=12)
-        self.conv4 = nn.Conv2d(in_channels, out_channels, kernel_size=3, dilation=18, padding=18)
+        # Atrous Convolution mit unterschiedlichen Raten und nachfolgendem BatchNorm+ReLU
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),  ###
+            nn.BatchNorm2d(out_channels),  ###
+            nn.ReLU(inplace=True)  ###
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, dilation=6, padding=6, bias=False),  ###
+            nn.BatchNorm2d(out_channels),  ###
+            nn.ReLU(inplace=True)  ###
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, dilation=12, padding=12, bias=False),  ###
+            nn.BatchNorm2d(out_channels),  ###
+            nn.ReLU(inplace=True)  ###
+        )
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, dilation=18, padding=18, bias=False),  ###
+            nn.BatchNorm2d(out_channels),  ###
+            nn.ReLU(inplace=True)  ###
+        )
 
         # Image Pooling
         self.image_pooling = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Conv2d(in_channels, out_channels, kernel_size=1)
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),  ###
+            nn.BatchNorm2d(out_channels),  ###
+            nn.ReLU(inplace=True)  ###
         )
 
-        self.out = nn.Conv2d(out_channels * 5, out_channels, kernel_size=1)
-        #print(f"{RED}[INFO]: ASPP__init__ ist abgeschlossen{RESET}")
+        # Ausgabeschicht nach dem Zusammenführen
+        self.out = nn.Sequential(
+            nn.Conv2d(out_channels * 5, out_channels, kernel_size=1, bias=False),  ###
+            nn.BatchNorm2d(out_channels),  ###
+            nn.ReLU(inplace=True)  ###
+        )
 
     def forward(self, x):
-        print(f"{RED}[INFO]: ASPP_method forward has been entered{RESET}")
         # Wende verschiedene atrous convolutions an
         x1 = self.conv1(x)
         x2 = self.conv2(x)
@@ -84,7 +92,5 @@ class ASPP(nn.Module):
         # Verkette die Ergebnisse und wende eine 1x1 convolution an
         x = torch.cat([x1, x2, x3, x4, x5], dim=1)
         x = self.out(x)
-        #print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
 
         return x
-

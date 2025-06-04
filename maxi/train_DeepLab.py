@@ -106,7 +106,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #10. Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
     t = time.perf_counter()
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
     print(f"[TIME]: train: binary loss function is defined as 'criterion' for segmentation {time.perf_counter()-t:.3f} s")
 
     #11. Initialisiert den Adam-Optimizer mit Lernrate.
