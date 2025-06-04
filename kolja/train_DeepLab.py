@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from PIL import Image
-from dataset_DeepLab import ETHMugsDataset
+from dataset_DeepLab_augmentiert import ETHMugsDataset
 from utils import *
 from DeepLab import DeepLab
 
@@ -58,6 +58,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     # === ANSI TERMINAL==
     BOLD = "\033[1m"
     GREEN = "\033[92m"
+    CYAN = "\033[96m"
     RESET = "\033[0m"
 
     t0 = time.perf_counter()
@@ -81,32 +82,16 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     train_dataset, val_dataset = random_split(full_train_dataset, [train_len, val_len])
     print(f"[TIME]: train: full_train_dataset has been splitted into train and val {time.perf_counter()-t:.3f} s")
 
-    #4. Traindata Augmentation
-    #====================================================================================
-    print(f"{GREEN}[ATTENTION]: train: The Augmentation is still not implemented{RESET}")
-    #====================================================================================
-
     #5. Erstelle DataLoader für Trainings- und Validierungsdaten
     t = time.perf_counter()
-    train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=2, pin_memory=True)
     print(f"[TIME]: train: train & val Dataloading is done {time.perf_counter()-t:.3f} s")
-
-     #6. Traindata Augmentation
-    #====================================================================================
-    print(f"{GREEN}[ATTENTION]: train: data flattening is still not implemented{RESET}")
-    """
-    for images_batch, masks_batch in train_loader:
-    B, V, C, H, W = images_batch.shape
-    images_flat = images_batch.view(B * V, C, H, W)
-    masks_flat  = masks_batch.view (B * V, 1, H, W)
-    """
-    #====================================================================================
 
     #7. Lade Testdaten
     t = time.perf_counter()
     test_dataset = ETHMugsDataset(root_dir=val_data_root, mode="test")
-    test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=False, num_workers=2, pin_memory=True)
     print(f"[TIME]: train: test_dataset is loaded and ready to use {time.perf_counter()-t:.3f} s")
 
     #8. Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
@@ -128,13 +113,13 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #11. Initialisiert den Adam-Optimizer mit Lernrate.
     t = time.perf_counter()
-    lr=config['hyperparameters']['learning_rate']
+    lr=float(config['hyperparameters']['learning_rate'])
     optimizer = torch.optim.Adam(model.parameters(), lr)
     print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' with learning rate {BOLD}{lr}{RESET}  {time.perf_counter()-t:.3f} s")
 
     #12. Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
     t = time.perf_counter()
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5, verbose=True)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5)
     print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
 
     #13. Schleife über alle Trainingsepochen.
@@ -150,9 +135,9 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         model.train() 
         print(f"[TIME]: train: trainingsloop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
-        print('-'*20)
-        print(f"{BOLD}EPOCH {epoch}{RESET}")
-        print('-'*20)
+        print('-'*40)
+        print(f"{BOLD}EPOCH {epoch}, LR {lr_scheduler.get_last_lr()}{RESET}")
+        print('-'*40)
 
         #13.2 Schleife über alle Trainings-Batches.
         t = time.perf_counter()
@@ -163,6 +148,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
             optimizer.zero_grad()
             output = model(image)
+          
             loss = criterion(output, gt_mask.float())
             loss.backward()
             optimizer.step()
@@ -174,12 +160,13 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: training batches done {time.perf_counter()-t:.3f} s")
 
         #====================================================================================
-        avg_epoch_loss = epoch_loss / len(train_loader)
-        print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
+        #avg_epoch_loss = epoch_loss / len(train_loader)
+        #print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
         #====================================================================================
 
         #13.2 Validation Loop
         t = time.perf_counter()
+        print(f"{BOLD}[INFO]: train: trainingsloop {CYAN}VALDIATION STARTS{RESET}")
         model.eval()
         val_iou = 0
         with torch.no_grad():
@@ -191,7 +178,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
         val_iou /= len(val_loader)
         val_ious.append(val_iou)
-        print(f"{BOLD}[INFO] -> Validation IoU: {val_iou}{RESET}")
+        print(f"{BOLD}[INFO] -> Validation IoU: {CYAN}{val_iou}{RESET}")
         print(f"[TIME]: train: trainingsloop: Schleife valdidation loop is done{time.perf_counter()-t:.3f} s")
         
         #13.3 Learnig Rate updaten
@@ -212,18 +199,20 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     plot_training_progress(train_losses, val_ious)
     print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
+    
+    """
     #15. Train the model on the full dataset after determining the parameters
     t = time.perf_counter()
     print(f"[INFO]: Training the model on the full dataset...")
-    full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
-
-    for epoch in range(config['hyperparameters']['num_epochs']):
+    full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
+    epochs = config['hyperparameters']['num_epochs']
+    for epoch in range(epochs): 
         t = time.perf_counter()
         model.train()
 
-        print('-t'*20)
+        print('-'*40)
         print(f"Full dataset training - Epoch {epoch}")
-        print('-t'*20)
+        print('-'*40)
 
         for image, gt_mask in full_train_loader:
             image = image.to(device)
@@ -239,7 +228,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"[TIME]: train: trainingsloop: training full batches done {time.perf_counter()-t:.3f} s")
     print(f"[TIME]: train: TOTAL full training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
-
+    """
     #16. Test Daten
     t = time.perf_counter()
     model.eval() # Setzt das Modell in den Evaluierungsmodus.
@@ -247,22 +236,35 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
     print(f"[TIME]: train: initiliasierungen für Test data prediction {time.perf_counter()-t0:.3f} s")
 
+    out_dir = os.path.join('prediction')
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
+
     #17. Schleife über alle Testbilder im DataLoader.
     t = time.perf_counter()
     with torch.no_grad():
         for i, (image, _) in enumerate(test_loader):
             image = image.to(device)
-            test_output = model(image)
-            test_output = torch.nn.Sigmoid()(test_output) # binäre Segmentierung in ETH Tasse und Hintergrund
+            # es sind jeweils 32 Bilder #print(f"[DEBUG_IMAGE] Shape: {image.shape}")
+            # 32,3,252,378
+            test_output = model(image)  # 32,1,252,378
+            test_output = torch.nn.Sigmoid()(test_output) # # 32,1,252,378 # binäre Segmentierung in ETH Tasse und Hintergrund
 
-            # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
-            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
-            # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
-            pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
-            pred_mask_image.save(os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png"))
+            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()  # reduziert Dimension  # 32,252,378
 
-            image_ids.append(str(i).zfill(4))
-            pred_masks.append(pred_mask)
+            # Konvertieren zu uint8 für PIL (0 oder 255)
+            pred_mask = (pred_mask * 255).astype(np.uint8) # 32, 252, 378
+
+            for idx in range(pred_mask.shape[0]):
+                #print(f"[DEBUG_pred_mask_idx] Shape: {pred_mask[idx].shape}")
+                # 4. In PIL-Bild umwandeln und speichern
+                pred_mask_image = Image.fromarray(pred_mask[idx])      
+
+                pfad = os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png")
+                pred_mask_image.save(pfad)
+
+                image_ids.append(str(i).zfill(4))
+                pred_masks.append(pred_mask)
     print(f"[TIME]: train: erstellen Test Masken DONE {time.perf_counter()-t:.3f} s")
 
     # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
@@ -272,11 +274,16 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
 
 if __name__ == "__main__":
+     # === ANSI TERMINAL==
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+    t = time.perf_counter()
     print(f"{BOLD}Meine Lieben es ist mir eine Freude sie begrüssen zu dürfen wir beginnen...{RESET}")
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
     
     parser = argparse.ArgumentParser(description="SML Project 2.")
-    print(f"[TIME]: Erstellen eines Argumentparser für Kommandozeilenargumente.  {time.perf_counter()-t:.3f} s")
+    print(f"[TIME]: Erstellen eines Argumentparser für Kommandozeilenargumente. {time.perf_counter()-t:.3f} s")
 
 
     #2. Fügt Argument für den Konfigurationspfad hinzu.
@@ -284,7 +291,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--config",
-        default="config.yaml",
+        default="config_DeepLab.yaml",
         help="Path to the config file.",
     )
     args = parser.parse_args()

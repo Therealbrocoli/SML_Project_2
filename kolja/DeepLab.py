@@ -17,7 +17,7 @@ class DeepLab(nn.Module):
         super(DeepLab, self).__init__()
 
         # Lade ein ResNet-Modell ohne vortrainierte Gewichte
-        resnet = models.resnet50(pretrained=False)
+        resnet = models.resnet50(weights=None)
 
         # Entferne den letzten Fully-Connected-Layer und das durchschnittliche Pooling
         self.backbone = nn.Sequential(*list(resnet.children())[:-2])
@@ -43,11 +43,11 @@ class DeepLab(nn.Module):
         x = self.fc(x)
 
         # Interpoliere auf die ursprüngliche Bildgröße
-        x = F.interpolate(x, size=(252, 376), mode='bilinear', align_corners=False)
+        x = F.interpolate(x, size=IMAGE_SIZE, mode='bilinear', align_corners=False)
 
         print(f"{RED}[INFO]: DeepLab_method forward ist abgeschlossen{RESET}")
 
-        return x # sigmoid wird in train gemacht ETH Tasse (1) oder Hintergrund (0)
+        return torch.sigmoid(x) # sonst bekommt CUDA ein Problem
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels):
         print(f"{RED}[INFO]: ASPP__init__ has been entered{RESET}")

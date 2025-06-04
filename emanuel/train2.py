@@ -68,7 +68,7 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     
     # Visualize a sample from train
     if len(train_dataset) > 0:
-        sample_image, sample_gt_mask = train_dataset[0]
+        sample_image, sample_gt_mask = train_dataset[0] 
         print(f"Train Image shape: {sample_image.shape}, Mask shape: {sample_gt_mask.shape}")
         print(f"Train Mask unique values: {torch.unique(sample_gt_mask)}")
         
