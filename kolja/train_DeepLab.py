@@ -121,36 +121,41 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     model.to(device) # GPU oder CPU
     print(f"[Time]: train: model is build and transferred to device {BOLD}{GREEN}{device}{RESET} {time.perf_counter()-t:.3f} s")
 
-    # Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
+    #10. Definiert die Loss-Funktion für binäre Klassifikation (Segmentierung).
     t = time.perf_counter()
     criterion = torch.nn.BCELoss()
     print(f"[Time]: train: binary loss function is defined as 'criterion' for segmentation {time.perf_counter()-t:.3f} s")
 
-    # Initialisiert den Adam-Optimizer mit Lernrate.
+    #11. Initialisiert den Adam-Optimizer mit Lernrate.
     t = time.perf_counter()
     lr=config['hyperparameters']['learning_rate']
     optimizer = torch.optim.Adam(model.parameters(), lr)
     print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' with learning rate {BOLD}{lr}{RESET}  {time.perf_counter()-t:.3f} s")
 
-    # Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
+    #12. Erstellt Scheduler, der die Lernrate basierend auf der Validierungs-IoU anpasst.
     t = time.perf_counter()
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5, verbose=True)
     print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
 
+    #13. Schleife über alle Trainingsepochen.
+    t = time.perf_counter()
     train_losses = []
     val_ious = []
+    epochs = config['hyperparameters']['num_epochs']
+    print(f"[INFO]: train: Starting training...")
+    for epoch in range(epochs):
 
-    # Schleife über alle Trainingsepochen.
-    print("[INFO]: Starting training...")
-    for epoch in range(config['hyperparameters']['num_epochs']):
+        t = time.perf_counter()
         model.train() # Setzt das Modell in den Trainingsmodus
+        print(f"[Time]: train: loop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
-        print('****************************')
-        print(epoch)
-        print('****************************')
+        print('-'*50)
+        print(f"EPOCH {epoch}")
+        print('_'*50)
 
-        epoch_loss = 0
         # Schleife über alle Trainings-Batches.
+        t = time.perf_counter()
+        epoch_loss = 0
         for i, (image, gt_mask) in enumerate(train_loader):
             image = image.to(device)
             gt_mask = gt_mask.to(device)
