@@ -9,7 +9,16 @@ import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 from torchvision.transforms import InterpolationMode
 from utils import IMAGE_SIZE  #(W, H)
-print(f"[TIME]: importing libraries done {time.perf_counter()-t0:.3f} s")
+
+
+# =====ANSI Terminal===
+BOLD = "\033[1m"
+CYAN = "\033[96m"
+YELLOW = "\033[93m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+RESET = "\033[0m"
+print(f"{BOLD}[TIME]: importing libraries done {time.perf_counter()-t0:.3f} s{RESET}")
 
 
 class ETHMugsDataset(Dataset):
@@ -21,7 +30,6 @@ class ETHMugsDataset(Dataset):
         self.image_list = sorted([f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")])
         self.N = len(self.image_list)
         self.mean, self.std = [0.427,0.419,0.377], [0.234,0.225,0.236]
-        # IMAGE_SIZE sollte definiert sein, z.B. (256,256)
 
     def __len__(self):
         if self.mode=="train":
@@ -61,13 +69,11 @@ class ETHMugsDataset(Dataset):
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
             elif aug_idx == 1:
-                # RandomHorizontalFlip + RandomAdjustSharpness
-                if random.random() < 0.5:
-                    image = TF.hflip(image)
-                    mask  = TF.hflip(mask)
+                # HorizontalFlip + AdjustSharpness
+                image = TF.hflip(image)
+                mask  = TF.hflip(mask)
                 # RandomAdjustSharpness nur auf Bild:
-                if random.random() < 0.5:
-                    image = TF.adjust_sharpness(image, sharpness_factor=2.0)
+                image = TF.adjust_sharpness(image, sharpness_factor=2.0)
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
@@ -83,6 +89,9 @@ class ETHMugsDataset(Dataset):
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
             elif aug_idx == 3:
+                # VerticalFlip
+                image = TF.vflip(image)
+                mask  = TF.vflip(mask)
                 # ColorJitter(contrast=0.5, saturation=0.5, hue=0.1)
                 color_jitter = transforms.ColorJitter(contrast=0.5, saturation=0.5, hue=0.1)
                 image = color_jitter(image)
@@ -91,8 +100,7 @@ class ETHMugsDataset(Dataset):
 
             elif aug_idx == 4:
                 # RandomSolarize(threshold=128, p=0.3)
-                if random.random() < 0.3:
-                    image = TF.solarize(image, threshold=128)
+                image = TF.solarize(image, threshold=128)
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
@@ -123,13 +131,6 @@ class ETHMugsDataset(Dataset):
 
 
 if __name__ == "__main__":
-    # =====ANSI Terminal===
-    BOLD = "\033[1m"
-    CYAN = "\033[96m"
-    YELLOW = "\033[93m"
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    RESET = "\033[0m"
 
     #1. Dataset
     t = time.perf_counter()
@@ -141,22 +142,90 @@ if __name__ == "__main__":
     t = time.perf_counter()
     print(f"{GREEN}[INFO]: loader starts{RESET}")
     loader  = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
-    print(f"{GREEN}[TIME]: loader done{RESET}")
+    print(f"{GREEN}[TIME]: loader done: {time.perf_counter()-t:.3f}{RESET}")
+
+    print(f"{len(dataset)} for Training")
+    print(f"dataset mode: {dataset.mode}")
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # 3. Nur die ersten fünf Bilder/Maske pro Augmentierung abspeichern
+    out_root = "datasets/augmented_data"
+
+    # Unterordner 1–5 anlegen (falls nicht vorhanden)
+    for i in range(1, 6):
+        os.makedirs(os.path.join(out_root, f"rgb{i}"),  exist_ok=True)
+        os.makedirs(os.path.join(out_root, f"mask{i}"), exist_ok=True)
+
+    # Counter für jeden Augmentations‐Index (0..4)
+    counters = [0, 0, 0, 0, 0]
+
+    # Unnormalisierung vorbereiten (wie gehabt)
+    inv_mean = [-m/s for m, s in zip(dataset.mean, dataset.std)]
+    inv_std  = [1.0/s   for s   in dataset.std]
+    unnormalize = transforms.Normalize(mean=inv_mean, std=inv_std)
+
+    print(f"{GREEN}[INFO]: Speichere maximal 3 Bilder/Masks pro Augmentierung …{RESET}")
+
+    for idx in range(len(dataset)):
+        # 1) Basis‐Index und Aug‐Index bestimmen
+        base_idx = idx // 5       # welches Originalbild
+        aug_idx  = idx % 5        # 0=Original, 1..4=Augmentierungen
+
+        # 2) Prüfen, ob wir für diesen aug_idx bereits 5 abgespeichert haben
+        if counters[aug_idx] >= 3:
+            # Wenn alle Indizes 0..4 jeweils 5 erreicht haben, können wir abbrechen
+            if all(c >= 3 for c in counters):
+                break
+            else:
+                continue
+
+        # 3) Bild‐Tensor und Masken‐Tensor aus dem Dataset holen
+        img_tensor, mask_tensor = dataset[idx]
+
+        # 4) Ursprünglicher Dateiname (Basisname) ermitteln
+        orig_fname = dataset.image_list[base_idx]
+        name_wo_ext = os.path.splitext(orig_fname)[0]
+
+        # 5) Unnormalisieren + PIL‐Image erzeugen
+        img_unnorm = unnormalize(img_tensor).clamp(0.0, 1.0)
+        img_pil = TF.to_pil_image(img_unnorm)  # RGB
+
+        # 6) Zielpfade zusammenbauen
+        rgb_subdir  = os.path.join(out_root, f"rgb{aug_idx+1}")
+        mask_subdir = os.path.join(out_root, f"mask{aug_idx+1}")
+        save_name = f"{name_wo_ext}.png"
+
+        img_path_to_save  = os.path.join(rgb_subdir,  save_name)
+        mask_path_to_save = os.path.join(mask_subdir, save_name)
+
+        # 7) Abspeichern
+        img_pil.save(img_path_to_save)
+
+        # Maske: Float‐Tensor in [0,1] → PIL ("L") → abspeichern
+        mask_pil = TF.to_pil_image(mask_tensor)
+        mask_pil.save(mask_path_to_save)
+
+        # 8) Counter hochzählen
+        counters[aug_idx] += 1
+
+    print(f"{GREEN}[INFO]: Fertig – {counters} Bilder/Masks pro Augmentierung abgelegt.{RESET}")
+    # ─────────────────────────────────────────────────────────────────────────────
 
 
+    #4. Dataset_test
+    t = time.perf_counter()
+    print(f"{GREEN}[INFO]: dataset starts{RESET}")
+    dataset_test = ETHMugsDataset("datasets/test_data", mode="test")
+    print(f"{GREEN}[TIME]: dataset done: {time.perf_counter()-t:.3f}{RESET}")
 
+    #5. Dataloader_test
+    t = time.perf_counter()
+    print(f"{GREEN}[INFO]: loader starts{RESET}")
+    loader_test  = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
+    print(f"{GREEN}[TIME]: loader done: {time.perf_counter()-t:.3f}{RESET}")
 
-
-
-
-
-
-
-
-
-
-
-
+    print(f"{len(dataset_test)} for Testing")
+    print(f"dataset mode: {dataset_test.mode}")
 
 """
 
