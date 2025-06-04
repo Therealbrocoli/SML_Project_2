@@ -96,9 +96,10 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #8. Erstellt den Ausgabeordner, falls dieser noch nicht existiert.
     t = time.perf_counter()
-    os.makedirs(config['paths']['out_dir'], exist_ok=True)
+    save_dir = config['paths']['out_dir']  ####
+    os.makedirs(save_dir, exist_ok=True)  ####
     # Gibt aus, wohin die Masken gespeichert werden.
-    print(f"[INFO]: train: will save the predicted segmentation masks to {config['paths']['out_dir']} {time.perf_counter()-t:.3f} s")
+    print(f"[INFO]: train: will save the predicted segmentation masks to {save_dir} {time.perf_counter()-t:.3f} s")
 
     #9. Model
     t = time.perf_counter()
@@ -113,7 +114,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     #11. Initialisiert den Adam-Optimizer mit Lernrate.
     t = time.perf_counter()
-    lr=float(config['hyperparameters']['learning_rate'])
+    lr = float(config['hyperparameters']['learning_rate'])
     optimizer = torch.optim.Adam(model.parameters(), lr)
     print(f"[TIME]: train: Adam_Optimizer is defined as 'optimizer' with learning rate {BOLD}{lr}{RESET}  {time.perf_counter()-t:.3f} s")
 
@@ -194,79 +195,45 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     plot_training_progress(train_losses, val_ious)
     print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
-    
-    """
-    #15. Train the model on the full dataset after determining the parameters
-    t = time.perf_counter()
-    print(f"[INFO]: Training the model on the full dataset...")
-    full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=2, pin_memory=True)
-    epochs = config['hyperparameters']['num_epochs']
-    for epoch in range(epochs): 
-        t = time.perf_counter()
-        model.train()
-
-        print('-'*40)
-        print(f"Full dataset training - Epoch {epoch}")
-        print('-'*40)
-
-        for image, gt_mask in full_train_loader:
-            image = image.to(device)
-            gt_mask = gt_mask.to(device)
-
-            optimizer.zero_grad()
-            output = model(image)
-            loss = criterion(output, gt_mask.float())
-            loss.backward()
-            optimizer.step()
-
-            print(f"{BOLD}[INFO]: -> Training Loss: {loss.data.cpu().numpy()} - IoU: {compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())}{RESET}")
-        print(f"[TIME]: train: trainingsloop: training full batches done {time.perf_counter()-t:.3f} s")
-    print(f"[TIME]: train: TOTAL full training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
-
-    """
     #16. Test Daten
     t = time.perf_counter()
-    model.eval() # Setzt das Modell in den Evaluierungsmodus.
-    image_ids = [] # Initialisiert eine Liste für Bild-IDs.
-    pred_masks = [] # Initialisiert eine Liste für vorhergesagte Masken.
-    print(f"[TIME]: train: initiliasierungen für Test data prediction {time.perf_counter()-t0:.3f} s")
+    model.eval()  # Setzt das Modell in den Evaluierungsmodus.
+    image_ids = []  # Initialisiert eine Liste für Bild-IDs.
+    pred_masks = []  # Initialisiert eine Liste für vorhergesagte Masken.
+    print(f"[TIME]: train: initiliasierungen für Test data prediction {time.perf_counter()-t:.3f} s")
 
-    out_dir = os.path.join('prediction')
-    os.makedirs(out_dir, exist_ok=True)
-    print(f"[INFO]: Saving the predicted segmentation masks to {out_dir}")
+    # (Bereits oben erstellt: save_dir = config['paths']['out_dir'])
+    print(f"[INFO]: Saving the predicted segmentation masks to {save_dir}")
 
     #17. Schleife über alle Testbilder im DataLoader.
     t = time.perf_counter()
     with torch.no_grad():
-        for i, (image, _) in enumerate(test_loader):
+        for batch_idx, (image, _) in enumerate(test_loader):  ####
             image = image.to(device)
-            # es sind jeweils 32 Bilder #print(f"[DEBUG_IMAGE] Shape: {image.shape}")
-            # 32,3,252,378
-            test_output = model(image)  # 32,1,252,378
-            test_output = torch.nn.Sigmoid()(test_output) # # 32,1,252,378 # binäre Segmentierung in ETH Tasse und Hintergrund
+            test_output = model(image)  # (B,1,H,W)
+            test_output = torch.sigmoid(test_output)  # (B,1,H,W)
 
-            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()  # reduziert Dimension  # 32,252,378
+            batch_pred = (test_output > 0.5).squeeze().cpu().numpy()  ####
+            batch_pred = (batch_pred * 255).astype(np.uint8)  ####
 
-            # Konvertieren zu uint8 für PIL (0 oder 255)
-            pred_mask = (pred_mask * 255).astype(np.uint8) # 32, 252, 378
+            for idx in range(batch_pred.shape[0]):  ####
+                global_index = batch_idx * config['hyperparameters']['batch_size'] + idx  ####
+                filename = f"{str(global_index).zfill(4)}_mask.png"  ####
+                pfad = os.path.join(save_dir, filename)  ####
+                mask_array = batch_pred[idx]  ####
 
-            for idx in range(pred_mask.shape[0]):
-                #print(f"[DEBUG_pred_mask_idx] Shape: {pred_mask[idx].shape}")
-                # 4. In PIL-Bild umwandeln und speichern
-                pred_mask_image = Image.fromarray(pred_mask[idx])      
+                # In PIL-Bild umwandeln und speichern
+                pred_mask_image = Image.fromarray(mask_array)  ####
+                pred_mask_image.save(pfad)  ####
 
-                pfad = os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png")
-                pred_mask_image.save(pfad)
-
-                image_ids.append(str(i).zfill(4))
-                pred_masks.append(pred_mask)
+                image_ids.append(str(global_index).zfill(4))  ####
+                pred_masks.append(mask_array)  ####
     print(f"[TIME]: train: erstellen Test Masken DONE {time.perf_counter()-t:.3f} s")
 
     # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
     t = time.perf_counter()
-    save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(config['paths']['out_dir'], 'submission.csv'))
-    print(f"[INFO]: train: Predictions saved to {os.path.join(config['paths']['out_dir'], 'submission.csv')}")
-
+    save_predictions(image_ids=image_ids, pred_masks=pred_masks, save_path=os.path.join(save_dir, 'submission.csv'))  ####
+    print(f"[INFO]: train: Predictions saved to {os.path.join(save_dir, 'submission.csv')}")
 
 if __name__ == "__main__":
      # === ANSI TERMINAL==
@@ -278,7 +245,7 @@ if __name__ == "__main__":
     # Erstellt einen Argumentparser für Kommandozeilenargumente.
     
     parser = argparse.ArgumentParser(description="SML Project 2.")
-    print(f"[TIME]: Erstellen eines Argumentparser für Kommandozeilenargumente. {time.perf_counter()-t:.3f} s")
+    print(f"[TIME]: Erstellen einesArgumentparser für Kommandozeilenargumente. {time.perf_counter()-t:.3f} s")
 
 
     #2. Fügt Argument für den Konfigurationspfad hinzu.
