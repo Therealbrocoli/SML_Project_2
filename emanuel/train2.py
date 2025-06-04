@@ -55,9 +55,10 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     train_dataset = ETHMugsDataset(root_dir=train_data_root, mode="train")                                      # Trainingsdatensatz
     test_dataset = ETHMugsDataset(root_dir=test_data_root, mode="test")                                         # Testdatensatz
     
-    # ##########################################################################
+    """# ##########################################################################
     # Data Inspection (Moved AFTER dataset initialization)
     print("\n[INFO]: Inspecting dataset samples...")
+    
     # Visualize a sample from train
     if len(train_dataset) > 0:
         sample_image, sample_gt_mask = train_dataset[0]
@@ -85,37 +86,8 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
         plt.axis('off')
         plt.show()
     else:
-        print("[WARNING]: Training dataset is empty!")
+        print("[WARNING]: Training dataset is empty!")"""
 
-    # Visualize a sample from test
-    if len(test_dataset) > 0:
-        sample_test_image, sample_test_gt_mask = test_dataset[0] # Corrected typo here
-        print(f"Test Image shape: {sample_test_image.shape}, Mask shape: {sample_test_gt_mask.shape}") # Corrected typo here
-        print(f"Test Mask unique values: {torch.unique(sample_test_gt_mask)}")
-
-        # Display test sample
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 2, 1)
-        if sample_test_image.ndim == 3 and sample_test_image.shape[0] in [1, 3]: # C, H, W
-            if sample_test_image.shape[0] == 1: # Grayscale
-                plt.imshow(sample_test_image.squeeze(0).cpu().numpy(), cmap='gray')
-            else: # RGB
-                plt.imshow(sample_test_image.permute(1, 2, 0).cpu().numpy()) # H, W, C
-        else:
-            plt.imshow(sample_test_image.cpu().numpy(), cmap='gray') # Assume HxW
-        plt.title(f'Test Image (shape: {sample_test_image.shape})')
-        plt.axis('off')
-
-        plt.subplot(1, 2, 2)
-        plt.imshow(sample_test_gt_mask.squeeze(0).cpu().numpy(), cmap='gray') # Assuming mask is 1xHxW
-        plt.title(f'Test Ground Truth Mask (shape: {sample_test_gt_mask.shape})')
-        plt.axis('off')
-        plt.show()
-    else:
-        print("[WARNING]: Test dataset is empty! This will result in 0.0 Validation IoU.")
-
-    print("[INFO]: Data inspection complete.")
-    # #############################################################################################
 
 
 
@@ -133,7 +105,7 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     # Initialisierung des Modells, der Verlustfunktion und des Optimierers
     model = build_model().to(device)                                        # Model wird festgelegt 
     criterion = BCEWithLogitsLoss()                                         # Verwende BCEWithLogitsLoss für binäre Segmentierung -> kein Sigmoid erforderlich
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)       # Optimierer (Stochastic Gradient Descent)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)       # Optimierer (Stochastic Gradient Descent)
 
     print("[INFO]: Starte das Training...")
     for epoch in range(num_epochs):                                         # Startet die Epochen-Schleife (das gesamte Trainingsdatenset wird durchlaufen)
