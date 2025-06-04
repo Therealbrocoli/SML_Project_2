@@ -253,17 +253,16 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     with torch.no_grad():
         for i, (image, _) in enumerate(test_loader):
             image = image.to(device)
+
             test_output = model(image)
             test_output = torch.nn.Sigmoid()(test_output) # binäre Segmentierung in ETH Tasse und Hintergrund
 
             # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
             pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
-            # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.
-             # Ensure pred_mask is 2D
-            if pred_mask.ndim == 3 and pred_mask.shape[0] == 1:
-                pred_mask = pred_mask.squeeze(0)
-            pred_mask_image = Image.fromarray((pred_mask * 255).astype('uint8'))
-            pred_mask_image.save(os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png"))
+            # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.)
+
+            pred_mask_image = Image.fromarray(pred_mask)
+            pred_mask_image.save((os.path.join(out_dir, str(i).zfill(4) + "_mask.png")))
 
             image_ids.append(str(i).zfill(4))
             pred_masks.append(pred_mask)
