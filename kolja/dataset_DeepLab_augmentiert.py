@@ -1,12 +1,164 @@
+import time
+t0 = time.perf_counter()
 import os
 import random
 from PIL import Image
 import torch
-from torch.utils.data import Dataset
-from torchvision import transforms, transforms as T
-import torchvision.transforms.functional as F
-
+from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as transforms
+import torchvision.transforms.functional as TF
+from torchvision.transforms import InterpolationMode
 from utils import IMAGE_SIZE  #(W, H)
+print(f"[TIME]: importing libraries done {time.perf_counter()-t0:.3f} s")
+
+
+class ETHMugsDataset(Dataset):
+    def __init__(self, root_dir, mode="train"):
+        self.mode = mode
+        self.root_dir = root_dir
+        self.rgb_dir  = os.path.join(root_dir, "rgb")
+        self.mask_dir = os.path.join(root_dir, "masks") if mode=="train" else None
+        self.image_list = sorted([f for f in os.listdir(self.rgb_dir) if f.endswith(".jpg")])
+        self.N = len(self.image_list)
+        self.mean, self.std = [0.427,0.419,0.377], [0.234,0.225,0.236]
+        # IMAGE_SIZE sollte definiert sein, z.B. (256,256)
+
+    def __len__(self):
+        if self.mode=="train":
+            return self.N * 5   # Original + 4 Augmentierungen
+        else:
+            return self.N
+
+    def __getitem__(self, idx):
+        if self.mode=="train":
+            base_idx = idx // 5
+            aug_idx  = idx % 5
+        else:
+            base_idx = idx
+            aug_idx  = 0
+
+        fname = self.image_list[base_idx]
+        img_path = os.path.join(self.rgb_dir, fname)
+        image = Image.open(img_path).convert("RGB")
+
+        if self.mode=="train":
+            # 1. Maske laden
+            base_name = os.path.splitext(fname)[0].split("_rgb")[0]
+            mask_path = os.path.join(self.mask_dir, f"{base_name}_mask.png")
+            if not os.path.exists(mask_path):
+                raise FileNotFoundError(f"Maske fehlt: {mask_path}")
+            mask = Image.open(mask_path).convert("L")
+
+            # 2. Je nach aug_idx bestimmen, welche Augmentierung
+            #    aug_idx==0: Original, keine Veränderung vor Resize
+            #    aug_idx==1: Flip+Sharpness
+            #    aug_idx==2: Rotation+ColorJitter1
+            #    aug_idx==3: ColorJitter2
+            #    aug_idx==4: Solarize
+            if aug_idx == 0:
+                # Keine zufälligen Schritte, nur Resize → Tensor → Norm
+                image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+
+            elif aug_idx == 1:
+                # RandomHorizontalFlip + RandomAdjustSharpness
+                if random.random() < 0.5:
+                    image = TF.hflip(image)
+                    mask  = TF.hflip(mask)
+                # RandomAdjustSharpness nur auf Bild:
+                if random.random() < 0.5:
+                    image = TF.adjust_sharpness(image, sharpness_factor=2.0)
+                image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+
+            elif aug_idx == 2:
+                # RandomRotation ≤ 30° + ColorJitter(bright=0.2,contrast=0.2,sat=0.2,hue=0.02)
+                angle = random.uniform(-30, 30)
+                image = TF.rotate(image, angle, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.rotate(mask,  angle, interpolation=InterpolationMode.NEAREST)
+                color_jitter = transforms.ColorJitter(brightness=0.2, contrast=0.2,
+                                                      saturation=0.2, hue=0.02)
+                image = color_jitter(image)
+                image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+
+            elif aug_idx == 3:
+                # ColorJitter(contrast=0.5, saturation=0.5, hue=0.1)
+                color_jitter = transforms.ColorJitter(contrast=0.5, saturation=0.5, hue=0.1)
+                image = color_jitter(image)
+                image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+
+            elif aug_idx == 4:
+                # RandomSolarize(threshold=128, p=0.3)
+                if random.random() < 0.3:
+                    image = TF.solarize(image, threshold=128)
+                image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+
+            # 3. In Tensor + Normalize umwandeln
+            image = TF.to_tensor(image)
+            image = TF.normalize(image, self.mean, self.std)
+            mask  = TF.to_tensor(mask)  # ergibt Float in [0,1]; ∵ binäre Maske
+
+            return image, mask
+
+        else:
+            # Validierungs-/Testmodus: nur Resize, ToTensor, Normalize; Dummy-Maske falls nötig
+            image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+            image = TF.to_tensor(image)
+            image = TF.normalize(image, self.mean, self.std)
+            if self.mode=="val":
+                base_name = os.path.splitext(fname)[0].split("_rgb")[0]
+                mask_path = os.path.join(self.mask_dir, f"{base_name}_mask.png")
+                mask = Image.open(mask_path).convert("L")
+                mask = TF.resize(mask, IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+                mask = TF.to_tensor(mask)
+            else:
+                # Für Testmodus: Dummy-Maske (0er-Tensor)
+                mask = torch.zeros((1, IMAGE_SIZE[0], IMAGE_SIZE[1]), dtype=torch.float32)
+
+            return image, mask
+
+
+
+if __name__ == "__main__":
+    # =====ANSI Terminal===
+    BOLD = "\033[1m"
+    CYAN = "\033[96m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    RESET = "\033[0m"
+
+    #1. Dataset
+    t = time.perf_counter()
+    print(f"{GREEN}[INFO]: dataset starts{RESET}")
+    dataset = ETHMugsDataset("datasets/train_data", mode="train")
+    print(f"{GREEN}[TIME]: dataset done: {time.perf_counter()-t:.3f}{RESET}")
+
+    #2. Dataloader
+    t = time.perf_counter()
+    print(f"{GREEN}[INFO]: loader starts{RESET}")
+    loader  = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
+    print(f"{GREEN}[TIME]: loader done{RESET}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
 
 class ETHMugsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
@@ -85,10 +237,10 @@ class ETHMugsDataset(Dataset):
             return img_t, zero_mask
 
     def _apply_random_augs(self, img: Image.Image, msk: Image.Image):
-        """
-        Hier ziehen wir einmalig alle Zufallsentscheidungen
-        und wenden sie exakt synchron auf Bild und Maske an.
-        """
+        
+        #Hier ziehen wir einmalig alle Zufallsentscheidungen
+        #und wenden sie exakt synchron auf Bild und Maske an.
+        
         # 1. Horizontal Flip (50 %)
         if random.random() < 0.5:
             img = F.hflip(img)
@@ -203,3 +355,5 @@ class ETHMugsDataset(Dataset):
             mask = torch.zeros((1, 252, 376), dtype=torch.float32)  # Gibt Dummy-Maske zurück, falls nicht train.
 
         return image, mask  # Gibt Bild und Maske (beides als Tensor) zurück.
+
+"""
