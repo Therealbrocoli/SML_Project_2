@@ -138,7 +138,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     print(f"[Time]: train: Adam_Optimizer is defined as 'optimizer' {time.perf_counter()-t:.3f} s")
 
     #13. Schleife über alle Trainingsepochen.
-    t = time.perf_counter()
+    t0 = time.perf_counter()
     train_losses = []
     val_ious = []
     epochs = config['hyperparameters']['num_epochs']
@@ -148,7 +148,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         #13.1 Setzt das Modell in den Trainingsmodus
         t = time.perf_counter()
         model.train() 
-        print(f"[Time]: train: loop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
+        print(f"[Time]: train: trainingsloop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
         print('-'*50)
         print(f"{BOLD}EPOCH {epoch}{RESET}")
@@ -170,11 +170,13 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
             epoch_loss += loss.item()
             train_losses.append(loss.item())
 
-            print("Training Loss: {}".format(loss.data.cpu().numpy()),
-                  "- IoU: {}".format(compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())))
-        print(f"[Time]: train: loop: Schleife über alle Training Batches is Done{time.perf_counter()-t:.3f} s")
+            print(f"{BOLD}[INFO] -> Training Loss: {loss.data.cpu().numpy()} - IoU: {compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())}{RESET}")
+        print(f"[Time]: train: trainingsloop: training batches done {time.perf_counter()-t:.3f} s")
 
+        #====================================================================================
         avg_epoch_loss = epoch_loss / len(train_loader)
+        print(f"{GREEN}[ATTENTION]: train: trainingsloop: hier ist etwas definiert was man nicht braucht{RESET}")
+        #====================================================================================
 
         #13.2 Validation Loop
         t = time.perf_counter()
@@ -189,20 +191,27 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
         val_iou /= len(val_loader)
         val_ious.append(val_iou)
-        print(f"Validation IoU: {val_iou}")
-        print(f"[Time]: train: loop: Schleife valdidation loop is done{time.perf_counter()-t:.3f} s")
+        print(f"{BOLD}[INFO] -> Validation IoU: {val_iou}{RESET}")
+        print(f"[Time]: train: trainingsloop: Schleife valdidation loop is done{time.perf_counter()-t:.3f} s")
         
         #13.3 Learnig Rate updaten
         t = time.perf_counter()
         lr_scheduler.step(val_iou)
-        print(f"[Time]: train: loop: {time.perf_counter()-t:.3f} s")
+        print(f"[Time]: train: trainingsloop: learning rate is updated now {time.perf_counter()-t:.3f} s")
 
-        # Speichert das Modell nach jeder Epoche als Checkpoint.
+        #13.4 Speichert das Modell nach jeder Epoche als Checkpoint.
+        t = time.perf_counter()
         torch.save(model.state_dict(), os.path.join(ckpt_dir, f"epoch_{epoch + 1}.pth"))
+        print(f"[Time]: train: trainingsloop: checkpoints has been saved {time.perf_counter()-t:.3f} s")
+    print(f"[Time]: train: TOTAL Training endurance {BOLD}{time.perf_counter()-t0:.3f} s{RESET}")
 
+    #14 Plotting of the training and valdiation
+    t = time.perf_counter()
+    print(f"[INFO]: train: plotting starts {time.perf_counter()-t:.3f} s")
     plot_training_progress(train_losses, val_ious)
+    print(f"[TIME]: train: plot is loaded in {time.perf_counter()-t:.3f} s")
 
-    # Train the model on the full dataset after determining the parameters
+    #15 Train the model on the full dataset after determining the parameters
     print("[INFO]: Training the model on the full dataset...")
     full_train_loader = DataLoader(full_train_dataset, batch_size=config['hyperparameters']['batch_size'], shuffle=True, num_workers=4, pin_memory=True)
 
