@@ -241,27 +241,26 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     with torch.no_grad():
         for i, (image, _) in enumerate(test_loader):
             image = image.to(device)
+            # es sind jeweils 32 Bilder #print(f"[DEBUG_IMAGE] Shape: {image.shape}")
+            # 32,3,252,378
+            test_output = model(image)  # 32,1,252,378
+            test_output = torch.nn.Sigmoid()(test_output) # # 32,1,252,378 # binäre Segmentierung in ETH Tasse und Hintergrund
 
-            test_output = model(image)
-            test_output = torch.nn.Sigmoid()(test_output) # binäre Segmentierung in ETH Tasse und Hintergrund
+            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()  # reduziert Dimension  # 32,252,378
 
-            # 1. Boolean-Maske erzeugen
-            pred_mask = (test_output > 0.5)             # BoolTensor, Shape: (1,1,H,W)
+            # Konvertieren zu uint8 für PIL (0 oder 255)
+            pred_mask = (pred_mask * 255).astype(np.uint8) # 32, 252, 378
 
-            # 2. In NumPy konvertieren und Einheitsdimensionen entfernen
-            pred_mask_np = pred_mask.cpu().numpy()      # dtype=bool, Shape: (1,1,H,W)
-            pred_mask_np = np.squeeze(pred_mask_np)     # dtype=bool, Shape: (H,W) sollte sein
+            for idx in range(pred_mask.shape[0]):
+                #print(f"[DEBUG_pred_mask_idx] Shape: {pred_mask[idx].shape}")
+                # 4. In PIL-Bild umwandeln und speichern
+                pred_mask_image = Image.fromarray(pred_mask[idx])      
 
-            # 3. Typkonvertierung und Skalierung
-            pred_mask_np = (pred_mask_np.astype(np.uint8)) * 255  # dtype=uint8, Werte 0 oder 255
+                pfad = os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png")
+                pred_mask_image.save(pfad)
 
-            # 4. In PIL-Bild umwandeln und speichern
-            pred_mask_image = Image.fromarray(pred_mask_np)       # Bild ist jetzt Grauwerte 0–255
-            pfad = os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png")
-            pred_mask_image.save(pfad)
-
-            image_ids.append(str(i).zfill(4))
-            pred_masks.append(pred_mask)
+                image_ids.append(str(i).zfill(4))
+                pred_masks.append(pred_mask)
     print(f"[TIME]: train: erstellen Test Masken DONE {time.perf_counter()-t:.3f} s")
 
     # Speichert alle Vorhersagen im Submission-Format als CSV-Datei.
