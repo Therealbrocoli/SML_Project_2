@@ -261,12 +261,20 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
             test_output = model(image)
             test_output = torch.nn.Sigmoid()(test_output) # binäre Segmentierung in ETH Tasse und Hintergrund
 
-            # Schwellenwert auf 0.5: Erzeugt Binärmaske als NumPy-Array.
-            pred_mask = (test_output > 0.5).squeeze().cpu().numpy()
-            # Wandelt die Binärmaske in ein Graustufenbild (PIL Image) um.)
+            # 1. Boolean-Maske erzeugen
+            pred_mask = (test_output > 0.5)             # BoolTensor, Shape: (1,1,H,W)
 
-            pred_mask_image = Image.fromarray(pred_mask)
-            pred_mask_image.save((os.path.join(out_dir, str(i).zfill(4) + "_mask.png")))
+            # 2. In NumPy konvertieren und Einheitsdimensionen entfernen
+            pred_mask_np = pred_mask.cpu().numpy()      # dtype=bool, Shape: (1,1,H,W)
+            pred_mask_np = np.squeeze(pred_mask_np)     # dtype=bool, Shape: (H,W) sollte sein
+
+            # 3. Typkonvertierung und Skalierung
+            pred_mask_np = (pred_mask_np.astype(np.uint8)) * 255  # dtype=uint8, Werte 0 oder 255
+
+            # 4. In PIL-Bild umwandeln und speichern
+            pred_mask_image = Image.fromarray(pred_mask_np)       # Bild ist jetzt Grauwerte 0–255
+            pfad = os.path.join(config['paths']['out_dir'], f"{str(i).zfill(4)}_mask.png")
+            pred_mask_image.save(pfad)
 
             image_ids.append(str(i).zfill(4))
             pred_masks.append(pred_mask)
