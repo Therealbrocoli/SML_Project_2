@@ -145,15 +145,16 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     print(f"[INFO]: train: Starting training...")
     for epoch in range(epochs):
 
+        #13.1 Setzt das Modell in den Trainingsmodus
         t = time.perf_counter()
-        model.train() # Setzt das Modell in den Trainingsmodus
+        model.train() 
         print(f"[Time]: train: loop: modell wurde in den Trainingsmodus geschaltet{time.perf_counter()-t:.3f} s")
 
         print('-'*50)
-        print(f"EPOCH {epoch}")
+        print(f"{BOLD}EPOCH {epoch}{RESET}")
         print('_'*50)
 
-        # Schleife über alle Trainings-Batches.
+        #13.2 Schleife über alle Trainings-Batches.
         t = time.perf_counter()
         epoch_loss = 0
         for i, (image, gt_mask) in enumerate(train_loader):
@@ -171,10 +172,12 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
             print("Training Loss: {}".format(loss.data.cpu().numpy()),
                   "- IoU: {}".format(compute_iou(output.data.cpu().numpy() > 0.5, gt_mask.data.cpu().numpy())))
+        print(f"[Time]: train: loop: Schleife über alle Training Batches is Done{time.perf_counter()-t:.3f} s")
 
         avg_epoch_loss = epoch_loss / len(train_loader)
 
-        # Validation Loop
+        #13.2 Validation Loop
+        t = time.perf_counter()
         model.eval()
         val_iou = 0
         with torch.no_grad():
@@ -187,8 +190,12 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         val_iou /= len(val_loader)
         val_ious.append(val_iou)
         print(f"Validation IoU: {val_iou}")
-
+        print(f"[Time]: train: loop: Schleife valdidation loop is done{time.perf_counter()-t:.3f} s")
+        
+        #13.3 Learnig Rate updaten
+        t = time.perf_counter()
         lr_scheduler.step(val_iou)
+        print(f"[Time]: train: loop: {time.perf_counter()-t:.3f} s")
 
         # Speichert das Modell nach jeder Epoche als Checkpoint.
         torch.save(model.state_dict(), os.path.join(ckpt_dir, f"epoch_{epoch + 1}.pth"))
