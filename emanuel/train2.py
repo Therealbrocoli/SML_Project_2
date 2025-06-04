@@ -40,6 +40,9 @@ def train(ckpt_dir: str, train_data_root: str, test_data_root: str):
     # Überprüfen, ob CUDA verfügbar ist, und Gerät festlegen (CUDA erlaubt GPU-Beschleunigung)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[INFO]: Verwende Gerät: {device}")
+    if torch.cuda.is_available():
+        gpu = torch.cuda.get_device_name(0)
+        print(f"[INFO]: GPU: {gpu}")
 
     # Hyperparameter
     best_iou = 0.0       # Beste IoU, initialisiert auf 0
