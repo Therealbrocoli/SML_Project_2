@@ -17,7 +17,7 @@ import pandas as pd                     ### updaten: pandas wird für RLE-Checks
 import torch.nn.functional as F          ### updaten: F.interpolate
 #from monai.losses import DiceLoss, SurfaceLoss
 
-from dataset import ETHMugsDataset        # NICHT ÄNDERN
+from dataset_augmentiert_copy import ETHMugsDataset        # NICHT ÄNDERN
 from DeepLabUnet1 import DeepLabUnet      # NICHT ÄNDERN
 from utils import IMAGE_SIZE, mean_std, mask_to_rle, compute_iou
 
@@ -204,16 +204,37 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     # --- 7) Optimizer ---
     lr = float(config['hyperparameters']['learning_rate'])
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    #optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay = 1e-4)
+    #optimizer = torch.optim.NAdam(model.parameters(), lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr, momentum=0.9) #Achtung braucht anscheinend sehr lange
+    #optimizer = torch.optim.RAdam(model.parameters(), lr)
     print(f"[TIME]: train: Adam‐Optimizer definiert mit lr={lr}")
 
     # --- 8) LR‐Scheduler (ReduceLROnPlateau, überwacht Val‐IoU) ---
+    """
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode='max',
         factor=config['hyperparameters']['factor'],
         patience=config['hyperparameters']['patience']
     )
+    """
+    
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+    """
+    steps_per_epoch = len(train_loader)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=1e-3,            # Peak-LR (ruhig 2-10× höher als früherer Base-LR)
+        epochs=config['hyperparameters']['num_epochs'],
+        steps_per_epoch=steps_per_epoch,
+        pct_start=0.3,          # 30 % Warm-up
+        div_factor=25.0,        # Start-LR = max_lr/25
+        final_div_factor=1e4,   # End-LR  = max_lr/1e4
+        anneal_strategy="cos"   # Cosine-Abstieg    
+        )
+    """
+
     print(f"[TIME]: train: ReduceLROnPlateau‐Scheduler definiert")
 
     # --- 9) Early‐Stopping – Variablen ---
@@ -246,10 +267,12 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
             logits = model(image)        # (B,1, H_resized, W_resized)
 
             # Loss
-            loss = 1* criterion_bce(logits, gt_mask) +  0.5* compute_dice_loss(logits, gt_mask) + 0*criterion_mlsm(logits, gt_mask)
+            loss = 0* criterion_bce(logits, gt_mask) +  0* compute_dice_loss(logits, gt_mask) + 1*criterion_mlsm(logits, gt_mask)
 
             loss.backward()
             optimizer.step()
+            scheduler.step()
+
 
             train_losses.append(loss.item())
 
@@ -291,7 +314,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
         print(f"{BOLD}[INFO] -> Validation IoU: {CYAN}{val_iou:.4f}{RESET}")
 
         # 10.4) LR‐Scheduler updaten (mit Val‐IoU)
-        lr_scheduler.step(val_iou)
+        #lr_scheduler.step(val_iou)
 
         # 10.5) Best Model & Early‐Stopping prüfen
         if val_iou > best_val_iou:

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-from utils import IMAGE_SIZE  # NICHT ÄNDERN: IMAGE_SIZE in utils.py definiert
+from utils import IMAGE_SIZE  
 
 # --------------------
 # Helper‐Baustein: ConvBlock
