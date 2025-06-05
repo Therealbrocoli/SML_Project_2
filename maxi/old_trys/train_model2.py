@@ -17,7 +17,7 @@ import pandas as pd                     ### updaten: pandas wird für RLE-Checks
 import torch.nn.functional as F          ### updaten: F.interpolate
 
 from dataset import ETHMugsDataset        # NICHT ÄNDERN
-from DeepLabUnet1 import DeepLabUnet      # NICHT ÄNDERN
+from model2 import UNet      # NICHT ÄNDERN
 from utils import IMAGE_SIZE, mean_std, mask_to_rle, compute_iou
 
 # === ANSI TERMINAL Farben ===
@@ -26,7 +26,6 @@ GREEN = "\033[92m"
 CYAN  = "\033[96m"
 RED   = "\033[91m"
 RESET = "\033[0m"
-
 
 def compute_dice_loss(logits, targets, eps=1e-6):
     """
@@ -72,7 +71,7 @@ def plot_training_progress(train_losses, val_ious):
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig('prediction/training_progress.png')
+    plt.savefig('training_progress.png')
     plt.show()
     print(f"[TIME]: plot_training_progress: plot is loaded in {time.perf_counter()-t0:.3f} s")
 
@@ -191,7 +190,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
     print(f"[INFO]: train: will save the predicted segmentation masks to {save_dir}")
 
     # --- 5) Modell initialisieren ---
-    model = DeepLabUnet(num_classes=1).to(DEVICE)
+    model = UNet(3,1).to(DEVICE)
     print(f"[TIME]: train: DeepLabUnet gebaut und nach {DEVICE} verschoben")
 
     # --- 6) Loss‐Funktionen definieren ---
@@ -359,9 +358,8 @@ if __name__ == "__main__":
     # 6) Nach dem Training: Bestes Modell für Inferenz laden und Submission erzeugen
     DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     best_ckpt = os.path.join(CHECKPOINT_DIR, "best_model.pth")
-    net = DeepLabUnet(num_classes=1).to(DEVICE)
-    print("hallo")
-    net.load_state_dict(torch.load(best_ckpt, map_location=DEVICE, weights_only = True))
+    net = UNet(3,1).to(DEVICE)
+    net.load_state_dict(torch.load(best_ckpt, map_location=DEVICE))
     print(f"{BOLD}{CYAN}Lade bestes Modell für Inferenz ...{RESET}")
 
     inference_and_save_csv(net, DEVICE, out_dir=config['paths']['out_dir'])
