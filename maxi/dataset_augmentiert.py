@@ -29,14 +29,14 @@ class ETHMugsDataset(Dataset):
 
     def __len__(self):
         if self.mode=="train":
-            return self.N * 5   # Original + 4 Augmentierungen
+            return self.N * 2   # Original + 4 Augmentierungen
         else:
             return self.N
 
     def __getitem__(self, idx):
         if self.mode=="train":
-            base_idx = idx // 5
-            aug_idx  = idx % 5
+            base_idx = idx // 2
+            aug_idx  = idx % 2
         else:
             base_idx = idx
             aug_idx  = 0
@@ -65,6 +65,15 @@ class ETHMugsDataset(Dataset):
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
             elif aug_idx == 1:
+                # RandomCrop(threshold=128, p=0.3)
+                # 1. Zufälligen Crop-Parameter holen (Scale und Ratio nach Wunsch anpassen)
+                i, j, h, w = transforms.RandomResizedCrop.get_params(image, scale=(0.1, 0.25), ratio=(1.0, 1.0))
+                # 2. Bild und Maske synchron croppen und auf IMAGE_SIZE skalieren
+                image = TF.resized_crop(image, i, j, h, w, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
+                mask  = TF.resized_crop(mask,  i, j, h, w, IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+
+            """
+            elif aug_idx == 2:
                 # HorizontalFlip + AdjustSharpness
                 image = TF.hflip(image)
                 mask  = TF.hflip(mask)
@@ -73,7 +82,7 @@ class ETHMugsDataset(Dataset):
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
-            elif aug_idx == 2:
+            elif aug_idx == 3:
                 # RandomRotation ≤ 30° + ColorJitter(bright=0.2,contrast=0.2,sat=0.2,hue=0.02)
                 angle = random.uniform(-30, 30)
                 image = TF.rotate(image, angle, interpolation=InterpolationMode.BILINEAR)
@@ -84,7 +93,7 @@ class ETHMugsDataset(Dataset):
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
-            elif aug_idx == 3:
+            elif aug_idx == 4:
                 # VerticalFlip
                 image = TF.vflip(image)
                 mask  = TF.vflip(mask)
@@ -93,14 +102,7 @@ class ETHMugsDataset(Dataset):
                 image = color_jitter(image)
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
-
-            elif aug_idx == 4:
-                # RandomCrop(threshold=128, p=0.3)
-                # 1. Zufälligen Crop-Parameter holen (Scale und Ratio nach Wunsch anpassen)
-                i, j, h, w = transforms.RandomResizedCrop.get_params(image, scale=(0.1, 0.25), ratio=(1.0, 1.0))
-                # 2. Bild und Maske synchron croppen und auf IMAGE_SIZE skalieren
-                image = TF.resized_crop(image, i, j, h, w, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
-                mask  = TF.resized_crop(mask,  i, j, h, w, IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
+                """
 
             # 3. In Tensor + Normalize umwandeln
             image = TF.to_tensor(image)
@@ -150,12 +152,12 @@ if __name__ == "__main__":
     out_root = "datasets/augmented_data"
 
     # Unterordner 1–5 anlegen (falls nicht vorhanden)
-    for i in range(1, 6):
+    for i in range(1, 3):
         os.makedirs(os.path.join(out_root, f"rgb{i}"),  exist_ok=True)
         os.makedirs(os.path.join(out_root, f"mask{i}"), exist_ok=True)
 
     # Counter für jeden Augmentations‐Index (0..4)
-    counters = [0, 0, 0, 0, 0]
+    counters = [0, 0]
 
     # Unnormalisierung vorbereiten (wie gehabt)
     inv_mean = [-m/s for m, s in zip(dataset.mean, dataset.std)]
@@ -166,8 +168,8 @@ if __name__ == "__main__":
 
     for idx in range(len(dataset)):
         # 1) Basis‐Index und Aug‐Index bestimmen
-        base_idx = idx // 5       # welches Originalbild
-        aug_idx  = idx % 5        # 0=Original, 1..4=Augmentierungen
+        base_idx = idx // 2       # welches Originalbild
+        aug_idx  = idx % 2        # 0=Original, 1..4=Augmentierungen
 
         # 2) Prüfen, ob wir für diesen aug_idx bereits 5 abgespeichert haben
         if counters[aug_idx] >= 3:

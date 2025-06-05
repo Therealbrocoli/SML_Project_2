@@ -196,6 +196,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     # --- 6) Loss‐Funktionen definieren ---
     criterion_bce = torch.nn.BCEWithLogitsLoss()
+    #criterion_bce = torch.nn.MultiLabelSoftMarginLoss() 
 
     # --- 7) Optimizer ---
     lr = float(config['hyperparameters']['learning_rate'])
@@ -243,7 +244,7 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
             # Loss = BCEWithLogits + 0.5 * DiceLoss
             loss_bce = criterion_bce(logits, gt_mask)   # Mask wird hier automatisch aufgelöst/broadcasted
             loss_dice = compute_dice_loss(logits, gt_mask)
-            loss = loss_bce + 0.5 * loss_dice
+            loss = 1* loss_bce +  0.5* loss_dice
 
             loss.backward()
             optimizer.step()
@@ -320,9 +321,28 @@ def train(ckpt_dir: str, train_data_root: str, val_data_root: str, config: dict)
 
     # Fertiges Training: best_model.pth im ckpt_dir liegt nun bereit
 
+def seed_everything(seed: int = 42):
+    # ---------- Python & NumPy ----------
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # ---------- PyTorch ----------
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)      # alle GPUs, falls du mehrere hast
+
+    # ---------- CUDNN: deterministisch statt Speed-Rally ----------
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # ---------- PyTorch 1.10+ Hardcore-Mode ----------
+    torch.use_deterministic_algorithms(True)
+
+    # ---------- CuBLAS (CUDA ≥ 10.2) ----------
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 if __name__ == "__main__":
     t0 = time.perf_counter()
+    
     print(f"{BOLD}Meine Lieben es ist mir eine Freude sie begrüßen zu dürfen – wir beginnen...{RESET}")
 
     # 1) Argumentparser für das Config‐File

@@ -1,7 +1,7 @@
 hyperparameters:
-  num_epochs: 100
-  learning_rate: 4e-5
-  train_batch_size: 8
+  num_epochs: 2
+  learning_rate: 4e-4
+  train_batch_size: 16
   val_batch_size: 2
   log_frequency: 10
   patience: 3
