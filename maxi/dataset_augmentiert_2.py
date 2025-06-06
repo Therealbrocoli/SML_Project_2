@@ -29,7 +29,7 @@ class ETHMugsDataset(Dataset):
 
     def __len__(self):
         if self.mode=="train":
-            return self.N   # return self.N*5 Original + 4 Augmentierungen
+            return self.N*2   # return self.N*5 Original + 4 Augmentierungen
         else:
             return self.N
 
@@ -54,16 +54,16 @@ class ETHMugsDataset(Dataset):
             mask = Image.open(mask_path).convert("L")
 
             # 2. Je nach aug_idx bestimmen, welche Augmentierung
-            #    aug_idx==0: Original, keine Veränderung vor Resize
-            #    aug_idx==1: Flip+Sharpness
-            #    aug_idx==2: Rotation+ColorJitter1
-            #    aug_idx==3: ColorJitter2
-            #    aug_idx==4: Solarize
+            #    aug_idx==0: 
+            #    aug_idx==1: 
+            #    aug_idx==2: 
+            #    aug_idx==3:
+            #    aug_idx==4:
 
             if aug_idx == 0:
                 # RandomCrop(threshold=128, p=0.3)
                 # 1. Zufälligen Crop-Parameter holen (Scale und Ratio nach Wunsch anpassen)
-                i, j, h, w = transforms.RandomResizedCrop.get_params(image, scale=(0.3, 1), ratio=(1.0, 1.0))
+                i, j, h, w = transforms.RandomResizedCrop.get_params(image, scale=(0.2, 0.5), ratio=(1.0, 1.0))
                 # 2. Bild und Maske synchron croppen und auf IMAGE_SIZE skalieren
                 image = TF.resized_crop(image, i, j, h, w, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resized_crop(mask,  i, j, h, w, IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
@@ -77,12 +77,12 @@ class ETHMugsDataset(Dataset):
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
-            """
             elif aug_idx == 1:
                 # Keine zufälligen Schritte, nur Resize → Tensor → Norm
                 image = TF.resize(image, IMAGE_SIZE, interpolation=InterpolationMode.BILINEAR)
                 mask  = TF.resize(mask,  IMAGE_SIZE, interpolation=InterpolationMode.NEAREST)
 
+            """
             elif aug_idx == 2:
                 # HorizontalFlip + AdjustSharpness
                 image = TF.hflip(image)
@@ -162,12 +162,12 @@ if __name__ == "__main__":
     out_root = "datasets/augmented_data"
 
     # Unterordner 1–5 anlegen (falls nicht vorhanden)
-    for i in range(1, 2):
+    for i in range(1, 3):
         os.makedirs(os.path.join(out_root, f"rgb{i}"),  exist_ok=True)
         os.makedirs(os.path.join(out_root, f"mask{i}"), exist_ok=True)
 
     # Counter für jeden Augmentations‐Index (0..4)
-    counters = [0]
+    counters = [0,0]
 
     # Unnormalisierung vorbereiten (wie gehabt)
     inv_mean = [-m/s for m, s in zip(dataset.mean, dataset.std)]
@@ -178,8 +178,8 @@ if __name__ == "__main__":
 
     for idx in range(len(dataset)):
         # 1) Basis‐Index und Aug‐Index bestimmen
-        base_idx = idx // 1       # welches Originalbild
-        aug_idx  = idx % 1        # 0=Original, 1..4=Augmentierungen
+        base_idx = idx // 2      # welches Originalbild
+        aug_idx  = idx % 2      # 0=Original, 1..4=Augmentierungen
 
         # 2) Prüfen, ob wir für diesen aug_idx bereits 5 abgespeichert haben
         if counters[aug_idx] >= 3:
