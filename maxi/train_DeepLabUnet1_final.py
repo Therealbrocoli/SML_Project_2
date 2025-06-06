@@ -17,7 +17,7 @@ import pandas as pd                     ### updaten: pandas wird für RLE-Checks
 import torch.nn.functional as F          ### updaten: F.interpolate
 #from monai.losses import DiceLoss, SurfaceLoss
 
-from dataset_augmentiert_2 import ETHMugsDataset        # NICHT ÄNDERN
+from dataset import ETHMugsDataset        # NICHT ÄNDERN
 from DeepLabUnet1 import DeepLabUnet      # NICHT ÄNDERN
 from utils import IMAGE_SIZE, mean_std, mask_to_rle, compute_iou
 
